@@ -85,4 +85,8 @@ auth, sessions, CSRF, host allowlist, rate limit, redaction · Next.js dashboard
 
 ## Install verification
 
-Recorded below after running the documented install path from a clean clone of the pushed branch.
+The documented path was run on Linux from a **clean clone of the pushed branch** (empty directory, nothing local):
+`scripts/setup.sh` (about 40 s) → fresh `.env` copied from `.env.example` → `python3 launcher.py` → browser smoke test:
+**passed**. This found and fixed two real bugs that the unit tests had missed: comments after values in
+`.env.example` crashed the first start, and blank placeholder API keys were reported as "configured". Both now have
+regression tests. The same path on **Windows has not been run** (that is the first item under "Needs you").
