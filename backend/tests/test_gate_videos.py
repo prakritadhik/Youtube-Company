@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from app.enums import ApprovalKind
 from app.enums import OriginalityStatus as O
 from app.enums import VideoStage as V
 from app.models.videos import Video
+from app.production import scripts
+from app.research import seo
 from app.security.permissions import PermissionDenied
 from app.services import approvals, control, gate, videos
 from app.services import settings as settings_svc
 from app.storage import write_bytes_artifact
+from app.timeutil import utcnow
 from tests.helpers import verified_task
 
 BDAY, MED = "happy-birthday-songs", "medicine-information"
@@ -21,6 +26,12 @@ def make_ready_video(db, agent, channel=BDAY):
     v = videos.create(db, pm, channel, "Sunny Day Song")
     v.title = "Happy Birthday Sunny Day Song"
     v.metadata_json = {"description": "An original birthday song."}
+    if channel == MED:
+        scripts.add_source(db, pm, v.id, url="https://www.cdc.gov/aspirin", title="CDC aspirin", publisher="CDC", retrieved_at=utcnow() - timedelta(hours=1),
+                           note="", supports="Aspirin facts.")
+        v.metadata_json = {"description": f"Aspirin facts. {seo.DISCLAIMER} Source: https://www.cdc.gov/aspirin"}
+    ms = seo.create_set(db, pm, v.id, chosen_title=v.title, description=v.metadata_json["description"], generated_by="manual")
+    seo.approve(db, agent("research-manager"), ms.id, note="fixture", waive={"ACCURACY_UNASSESSED": "this fixture has no brief or script"})
     v.final_video_path = write_bytes_artifact("videos", f"v{v.id}.mp4", b"\x00video-bytes")
     v.thumbnail_path = write_bytes_artifact("videos", f"v{v.id}.png", b"\x89thumb")
     db.flush()

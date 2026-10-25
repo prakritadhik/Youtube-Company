@@ -12,9 +12,20 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app import migrations_check
-from app.api import routes_auth, routes_control, routes_diagnostics, routes_executive, routes_production
+from app.api import (
+    routes_auth,
+    routes_control,
+    routes_diagnostics,
+    routes_executive,
+    routes_production,
+    routes_research,
+)
 from app.api.ratelimit import RateLimiter
 from app.config import get_settings
+from app.research import ideas as ideas_svc
+from app.research import notes as notes_svc
+from app.research import seo as seo_svc
+from app.research import thumbs as thumbs_svc
 from app.security import redaction
 from app.security.permissions import PermissionDenied
 from app.services import approvals, board, control, evidence, finance, registry, reports, settings, tasks, videos
@@ -71,7 +82,8 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityMiddleware, allowed_origins=origins, limiter=RateLimiter(s.api_rate_limit_per_minute))
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
-    for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router):
+    for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router,
+              routes_research.router):
         app.include_router(r)
 
     @app.get("/api/health", tags=["system"])
@@ -105,7 +117,8 @@ def create_app() -> FastAPI:
         (board.BoardError, 409), (board.AcknowledgementRequired, 409), (tasks.TaskError, 409),
         (approvals.ApprovalError, 409), (settings.SettingError, 422), (videos.VideoError, 409),
         (reports.ReportError, 409), (evidence.EvidenceError, 422), (finance.BudgetExceeded, 402),
-        (control.ExternalActionBlocked, 409),
+        (control.ExternalActionBlocked, 409), (ideas_svc.IdeaError, 409), (notes_svc.ResearchError, 422), (seo_svc.SeoError, 409),
+        (thumbs_svc.ThumbError, 409),
     ):
         app.add_exception_handler(exc_type, err(code))
     app.add_exception_handler(Exception, unexpected)

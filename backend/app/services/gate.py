@@ -76,6 +76,13 @@ def evaluate(db: Session, video: Video, *, purpose: str = "clear") -> GateResult
         add("THUMBNAIL_MISSING", "The thumbnail is missing or empty.")
     if not (video.title or "").strip() or not str((video.metadata_json or {}).get("description", "")).strip():
         add("METADATA_INCOMPLETE", "Title and description are required.")
+    from app.research import seo  # local import: the research package depends on the video models
+
+    approved_meta = seo.approved(db, video.id) if video.id else None
+    if approved_meta is None:
+        add("METADATA_NOT_APPROVED", "The title, description and tags have not been through the metadata checks and approved.")
+    elif not seo.matches_video(approved_meta, video):
+        add("METADATA_CHANGED_AFTER_APPROVAL", "The title or description was edited after it was approved; approve the new text.")
     if not video.qa_passed:
         add("QA_NOT_PASSED", "Final quality assurance has not passed.")
 

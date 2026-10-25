@@ -16,6 +16,7 @@ from app.models.tasks import Task
 from app.models.videos import Video
 from app.production import assets, briefs, originality, pipeline, qa
 from app.production import scripts as scripts_svc
+from app.research import seo
 from app.services import control, gate, org, tasks, videos
 from app.storage import resolve_data_path
 from app.worker.runner import HANDLERS, Runner
@@ -116,6 +117,13 @@ def test_full_production_from_brief_to_the_publishing_queue(db, agent):
         assert {a.provider for a in rows} <= {"local-procedural", "local-render", "bundled"}
         # the board version in force was recorded by every specialist task
         assert all(s.get(Task, i).board_version_used is not None for i in ids.values())
+        # the title and description are not publishable until the research department has checked and approved them
+        with pytest.raises(gate.GateBlocked) as e:
+            videos.set_stage(s, org.actor_for_slug(s, "production-manager"), vid, V.READY)
+        assert set(e.value.result.codes()) == {"CEO_RIGHTS_NOT_VERIFIED", "METADATA_NOT_APPROVED"}
+        ms = seo.generate(s, org.actor_for_slug(s, "keyword-seo-specialist"), vid)
+        assert ms.status == "CHECKED" and ms.generated_by == "template-v1"
+        seo.approve(s, org.actor_for_slug(s, "research-manager"), ms.id, note="accurate to the finished video")
         # nothing gets in without the CEO's own inspection
         with pytest.raises(gate.GateBlocked) as e:
             videos.set_stage(s, org.actor_for_slug(s, "production-manager"), vid, V.READY)

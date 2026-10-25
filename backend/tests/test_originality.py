@@ -25,6 +25,7 @@ from tests.prod_helpers import (
     add_music,
     add_scenes,
     add_thumbnail,
+    approve_metadata,
     full_package,
     make_video,
     tiny_mp4,
@@ -259,8 +260,7 @@ def test_copying_a_source_verbatim_is_blocked_and_paraphrase_is_not(db, agent):
 def ready_video(db, agent):
     v = make_video(db, agent)
     full_package(db, agent, v)
-    v.title = "Garden Morning Song"
-    v.metadata_json = {"description": "An original instrumental demo."}
+    approve_metadata(db, agent, v)
     v.final_video_path = write_bytes_artifact(f"videos/{v.id}", "final.mp4", tiny_mp4(get_settings().artifacts_dir / "tmp.mp4").read_bytes())
     v.thumbnail_path = next(a.path for a in assets.for_video(db, v.id) if a.kind == "thumbnail")
     db.flush()

@@ -22,6 +22,7 @@ from app.models.board import BoardEntry
 from app.models.finance import UsageRecord
 from app.models.org import Agent, Department
 from app.models.reports import Report
+from app.models.research import ContentIdea, MetadataSet, ResearchNote, ThumbnailConcept
 from app.models.tasks import Evidence, Task
 from app.models.videos import Video
 from app.security.permissions import Actor, P, PermissionDenied
@@ -46,6 +47,10 @@ _ENTITIES: dict[str, tuple[Any, str]] = {  # entity → (model, default time col
     "usage_records": (UsageRecord, "ts"),
     "reports": (Report, "created_at"),
     "evidence": (Evidence, "created_at"),
+    "content_ideas": (ContentIdea, "created_at"),
+    "research_notes": (ResearchNote, "created_at"),
+    "metadata_sets": (MetadataSet, "created_at"),
+    "thumbnail_concepts": (ThumbnailConcept, "created_at"),
 }
 
 
@@ -212,6 +217,10 @@ def build_department_report(
         Claim("Channel performance metrics (views, watch time, retention, revenue) are unavailable: YouTube is not connected.",
               ClaimClass.UNAVAILABLE, None, {"type": "source_not_connected", "source": "youtube"}, "integration status", who),
     ]
+    if dept.slug == "research-growth":
+        from app.research import reporting as research_reporting  # local import: it depends on this module
+
+        claims.extend(research_reporting.claims(db, actor, start, end, who))
     claims.extend(extra_claims or [])
 
     content = {

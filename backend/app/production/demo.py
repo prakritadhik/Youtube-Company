@@ -25,6 +25,7 @@ from app.models.tasks import Task
 from app.models.videos import Video
 from app.production import briefs, originality, pipeline, scripts
 from app.production import qa as qa_mod
+from app.research import seo, thumbs, workflow
 from app.services import gate, org, tasks, videos
 from app.storage import resolve_data_path
 from app.worker.runner import HANDLERS, Runner
@@ -48,7 +49,7 @@ LYRICS_NOTE = "sample lyrics written by the build assistant for this demonstrati
 def demo_brief() -> dict[str, Any]:
     return {
         "video_objective": "Demonstrate the production pipeline end to end.", "target_audience": "The channel owner",
-        "viewer_benefit": "See exactly what the platform produces and how it is checked.", "main_concept": "A short animated lyric demo",
+        "viewer_benefit": "See exactly what the platform produces and how it is checked.", "main_concept": "A short animated lyric demo, a pipeline demonstration and never a real release",
         "tone_and_style": "warm and clean", "planned_length_seconds": 40, "visual_direction": "procedural illustrated landscapes",
         "audio_direction": "algorithmic bells, pad, bass and soft drums", "hook_and_opening": "Bells over a sunrise",
         "structure": "intro, verse, chorus, verse 2, chorus 2, outro", "thumbnail_concept": "Large title over soft colour",
@@ -65,11 +66,12 @@ def is_demo(video: Video) -> bool:
 
 
 def _review_submitted() -> int:
+    """Each submitted task is verified by the manager above the role that did it (their own department's manager)."""
     n = 0
     with session_scope() as db:
-        pm = org.actor_for_slug(db, "production-manager")
         for t in db.scalars(select(Task).where(Task.status == TaskStatus.SUBMITTED.value)).all():
-            tasks.review(db, pm, t.id, approve=True, notes="evidence re-verified by the manager (demo run)")
+            boss = org.chain_of_command(db, org.get_agent(db, t.assigned_agent.slug))[0]
+            tasks.review(db, org.actor_for_slug(db, boss.slug), t.id, approve=True, notes="evidence re-verified by the manager (demo run)")
             n += 1
     return n
 
@@ -78,11 +80,12 @@ def run(width: int = 1280, height: int = 720, preset: str = "veryfast", progress
     spec = {"width": width, "height": height, "preset": preset, "crossfade_s": 0.6}
     with session_scope() as db:
         pm = org.actor_for_slug(db, "production-manager")
-        v = videos.create(db, pm, "happy-birthday-songs", "DEMO pipeline run")
+        v = videos.create(db, pm, "happy-birthday-songs", "DEMO — Garden Morning (pipeline demonstration)")
         t = pipeline.start_production(db, pm, v.id, title="DEMO — Garden Morning (pipeline demonstration)",
                                       description="Pipeline demonstration: an algorithmic instrumental with sample lyrics. Not a real release and never publishable.",
                                       tags=[], spec=spec)
         v.metadata_json = {**v.metadata_json, "demo": True}
+        t["metadata"] = workflow.start_packaging(db, org.actor_for_slug(db, "research-manager"), v.id)
         vid, ids = v.id, {k: x.id for k, x in t.items()}
     progress(f"Created demo video #{vid} and its {len(ids)} tasks.")
 
@@ -99,6 +102,11 @@ def run(width: int = 1280, height: int = 720, preset: str = "veryfast", progress
         sv = scripts.add_script(db, w, vid, kind="lyrics", text=DEMO_LYRICS, author_kind="agent", author_label=f"Claude (build assistant): {LYRICS_NOTE}")
         tasks.submit(db, w, ids["script"], result={"version": sv.version}, evidence_specs=[{"kind": "file", "ref": sv.artifact_path, "note": "lyrics"}])
     _review_submitted()
+    with session_scope() as db:  # a thumbnail concept is checked and approved on paper before the image is made
+        concept = thumbs.create(db, org.actor_for_slug(db, "thumbnail-designer"), vid, overlay_text="DEMO Garden Morning",
+                                composition="Large title over soft colour, nothing else", palette=["#FFFFFF", "#1B3A57"],
+                                relation_to_content="The title is the video's title; the picture is the generated garden backdrop")
+        thumbs.approve(db, org.actor_for_slug(db, "research-manager"), concept.id, note="clear and accurate for the demonstration")
     progress("Brief approved and lyrics saved. Running the production queue (music → scenes → captions → render → thumbnail → QA → rights)...")
 
     runner = Runner("demo", HANDLERS)
@@ -125,6 +133,10 @@ def run(width: int = 1280, height: int = 720, preset: str = "veryfast", progress
             out["originality_status"] = video.originality_status
             if video.originality_status == "PASS":
                 originality.ceo_inspect(db, ceo, vid)
+        ms = seo.latest(db, vid)
+        if ms is not None and ms.status == "CHECKED":
+            seo.approve(db, org.actor_for_slug(db, "research-manager"), ms.id, note="accurate to the demonstration video")
+        out["metadata"] = {"version": ms.version, "status": ms.status, "title": ms.chosen_title, "chapters": len(ms.chapters)} if ms else None
         video = db.get(Video, vid)
         out["stage"] = video.stage
         # Everything has passed; the one thing that must still stop it is that it is a demonstration.

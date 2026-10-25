@@ -32,6 +32,10 @@ _RECORD_TABLES: dict[str, str] = {
     "assets": "app.models.production.Asset",
     "originality_reviews": "app.models.production.OriginalityReview",
     "qa_reports": "app.models.production.QAReport",
+    "content_ideas": "app.models.research.ContentIdea",
+    "research_notes": "app.models.research.ResearchNote",
+    "metadata_sets": "app.models.research.MetadataSet",
+    "thumbnail_concepts": "app.models.research.ThumbnailConcept",
 }
 
 MACHINE_VERIFIABLE = {EvidenceKind.FILE, EvidenceKind.DB_RECORD, EvidenceKind.API_RESPONSE, EvidenceKind.TEST_RESULT}

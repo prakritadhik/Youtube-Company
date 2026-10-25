@@ -8,6 +8,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.production import assets, briefs, imaging, scripts, synth
+from app.research import seo
 from app.services import videos
 from app.timeutil import utcnow
 
@@ -125,3 +126,9 @@ def tiny_mp4(path: Path, *, seconds=3, size="320x180", extra_v=None, extra_a=Non
 
 HAVE_FFMPEG = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 NOW = utcnow
+
+
+def approve_metadata(db, agent, video, **waive):
+    """Draft, check and approve metadata through the real service, as the research department would."""
+    ms = seo.generate(db, agent("keyword-seo-specialist"), video.id)
+    return seo.approve(db, agent("research-manager"), ms.id, note="test fixture", waive=waive or None)
