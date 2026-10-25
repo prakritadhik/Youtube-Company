@@ -48,7 +48,7 @@ const problems = [];
     ["/channels/medicine-information", "Medicine Information"], ["/channels/ai-story-videos", "AI Story Videos"],
     ["/organization", "Organization"], ["/board", "Company Intelligence Board"], ["/approvals", "Approval Center"],
     ["/rights", "Originality & Rights"], ["/reports", "Executive reports"], ["/settings", "Settings & control"],
-    ["/diagnostics", "Diagnostics"],
+    ["/diagnostics", "Diagnostics"], ["/plan", "Content plan"],
   ];
   for (const [path, heading] of pages) {
     await page.goto(BASE + path);
@@ -56,6 +56,15 @@ const problems = [];
     await page.waitForLoadState("networkidle");
     await shot(path.replace(/\W+/g, "_") || "root");
   }
+  await page.goto(BASE + "/plan");
+  await page.getByRole("button", { name: "Propose an idea" }).click();
+  await page.getByLabel("Title", { exact: true }).fill("Lantern Parade Birthday");
+  await page.getByLabel("Concept").fill("A gentle original piece about a lantern parade through a quiet village at dusk.");
+  await page.getByLabel("Audience", { exact: true }).fill("Parents and children aged 3-8");
+  await page.getByRole("button", { name: "Propose and assess" }).click();
+  await page.getByText("How the score was worked out").waitFor();
+  await page.getByText("Unavailable — no trend, search or audience data has been recorded.").waitFor();  // demand is never invented
+  await page.keyboard.press("Escape");
   await page.goto(BASE + "/channels/happy-birthday-songs");
   await page.getByText("Shown as unavailable, never as zero.").first().waitFor();
 

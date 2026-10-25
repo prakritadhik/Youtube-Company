@@ -4,10 +4,10 @@ Revision ID: 0003
 Revises: 0002
 Create Date: 2026-10-25 03:36:50.838832
 """
-from alembic import op
 import sqlalchemy as sa
-import app.db
+from alembic import op
 
+import app.db
 
 revision = '0003'
 down_revision = '0002'

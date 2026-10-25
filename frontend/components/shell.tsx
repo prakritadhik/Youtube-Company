@@ -13,6 +13,7 @@ const NAV: { href: string; label: string; icon: string; perm?: string }[] = [
   { href: "/channels/happy-birthday-songs", label: "Birthday Songs", icon: "♪" },
   { href: "/channels/medicine-information", label: "Medicine Info", icon: "✚" },
   { href: "/channels/ai-story-videos", label: "AI Stories", icon: "✦" },
+  { href: "/plan", label: "Content Plan", icon: "✎" },
   { href: "/organization", label: "Organization", icon: "⌘" },
   { href: "/board", label: "Intelligence Board", icon: "▤" },
   { href: "/approvals", label: "Approvals", icon: "✓" },

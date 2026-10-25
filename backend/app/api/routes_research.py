@@ -109,7 +109,7 @@ def _idea_detail(db: Session, idea: ContentIdea) -> dict[str, Any]:
 
 @router.get("/plan")
 def content_plan(channel: str | None = None, db: Session = Depends(get_db), auth: Auth = Depends(require(P.EXEC_READ))):
-    return {"channels": ideas.plan(db, channel),
+    return {"channels": ideas.plan(db, channel), "requirements": [{"key": k, "label": v[2]} for k, v in ideas.REQUIREMENTS.items()],
             "note": "Ordered per channel; the score is an ordering aid with its working shown, not a forecast of views. "
                     "Demand figures are unavailable unless someone recorded them with a source."}
 

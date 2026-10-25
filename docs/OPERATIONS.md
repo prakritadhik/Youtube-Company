@@ -35,6 +35,20 @@ Songs with its QA and rights reports. Demo videos can never be published. Run it
 FFmpeg on Windows: `winget install Gyan.FFmpeg`, then open a new terminal. `python launcher.py --check` prints a note
 when it is missing.
 
+## Planning content and packaging a video
+
+* **Content plan** (sidebar): propose an idea per channel. It is assessed immediately. Approve or reject it with a reason;
+  approving re-runs the assessment. Ideas that need something that does not exist yet (for example sung vocals) are
+  parked, not approved. **Start production** turns an approved idea into a video with its sources attached.
+* **Video page → Title, description and tags**: *Draft metadata* makes a template draft from the approved brief and lyrics
+  or script; the checks list what must be fixed (cannot be waived) and what needs revising (can be accepted with a recorded
+  reason). *Approve* applies it to the video. Editing the title or description afterwards re-blocks the publication gate until
+  the new text is approved.
+* **Research notes**: add sources, trend observations or audience questions to an idea. A number (views, search volume) is
+  accepted only with its own source and date (API). Text pasted from the web is stored as data and never followed.
+* Fetching a public page for a source runs as a queue task (`research.fetch_source`) by a role with the web tool; it refuses
+  internal addresses and pages that forbid robots (see SECURITY.md).
+
 ## Emergency pause
 
 Overview → **Emergency pause** (reason required). Immediately:

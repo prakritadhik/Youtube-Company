@@ -48,6 +48,8 @@ then roles define permissions and duties only; the pipeline's deterministic part
 | Are uploads from unverified API projects locked to private? | **Conflicting.** Google's revision history is reported to say videos from unverified projects created after 28 July 2020 are locked private until a compliance audit; another page is reported to say otherwise. YouTube Help says locked videos cannot be appealed and must be re-uploaded via a verified service | Reported, conflicting |
 | Which metrics/analytics scopes exist | Unknown | Unknown |
 
+| Metadata limits used by the SEO checks (title 100 characters, description 5 000 bytes, tags 500 characters, hashtags ignored above 15, chapters from 0:00 / at least three / at least 10 s, no `<` `>`) | Taken from YouTube Help and API documentation as reported to the build environment; kept as named constants (`app/research/seo.py::LIMITS`) | Reported — confirmed or corrected against the live API in Phase 4 |
+
 Design consequences (so the app is correct *whichever* statement is true): quota costs are **configuration, not
 constants**; after every upload the adapter **reads back `status.privacyStatus`** and reports a private-lock as a
 failure to publish rather than a success; the owner is told early that a compliance audit may be required before

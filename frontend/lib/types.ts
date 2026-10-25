@@ -120,3 +120,65 @@ export interface ProviderStatus {
   attestation: null | { api_access_confirmed: boolean; commercial_use_confirmed: boolean; note: string; confirmed_at: string };
   capabilities: ProviderCapability[];
 }
+
+// --- Phase 3: research, planning and packaging ------------------------------------------------------------------
+export interface Finding { code: string; severity: "block" | "revise" | "info"; field: string; message: string; waived?: string }
+
+export interface ResearchNoteView {
+  id: number; kind: string; url: string; title: string; publisher: string; method: string; retrieved_at: string; supports: string; note: string;
+  excerpt: string; source_class: string; source_class_basis: string; figures: { label: string; value: string; as_of: string; source: string }[];
+  injection_flags: string[]; untrusted: boolean; has_snapshot: boolean; promoted_source_id: number | null;
+}
+
+export interface IdeaSummary {
+  id: number; channel_id: number; rank: number | null; title: string; concept: string; audience: string; status: string; origin: string;
+  priority_score: number | null; assessed_at: string | null; planned_for: string | null; video_id: number | null; requires: string[];
+  decision_note: string | null; decided_by: string | null;
+  summary: { distinctness: string | null; feasibility: string | null; sources: number | null; demand: string | null };
+}
+
+export interface ScoreComponent { value: number | null; basis: string; detail: string; weight: number }
+
+export interface IdeaDetail extends IdeaSummary {
+  rationale: string; audience_relevance: number | null; risks: string[]; created_by: string; created_at: string; notes: ResearchNoteView[];
+  assessment: {
+    distinctness: { verdict: string; compared_against: number; basis: string;
+      nearest: { kind: string; id: number; title: string; topic_overlap: number; title_similarity: number; verdict: string }[] };
+    feasibility: { verdict: string; basis: string; note: string; blocking: string[];
+      requirements: { requirement: string; label: string; state: string; ready: boolean; detail: string }[] };
+    evidence: { sources: number; by_class: Record<string, number>; needs_sources: boolean; problems: string[]; flagged_notes: number;
+      demand: { state: string; note: string } };
+    priority: { score: number | null; ineligible: boolean; ineligible_reason: string; note: string; unavailable_components: string[];
+      components: Record<string, ScoreComponent> };
+    risks: string[]; automatic_risks: string[];
+    estimates: { cost_usd: number | null; production_minutes: number | null; kind: string };
+  };
+}
+
+export interface PlanResponse {
+  channels: { channel: string; channel_name: string; items: IdeaSummary[] }[];
+  requirements: { key: string; label: string }[]; note: string;
+}
+
+export interface MetadataSetView {
+  id: number; video_id: number; version: number; status: string; chosen_title: string; generated_by: string; created_by: string;
+  approved_by: string | null; approved_at: string | null; checked_at: string | null; worst_finding: string;
+  finding_counts: { block: number; revise: number; info: number };
+  title_candidates?: { title: string; source: string; label: string; findings: Finding[];
+    criteria: Record<string, { state: string; detail: string }> }[];
+  description?: string; tags?: string[]; hashtags?: string[]; chapters?: { start_s: number; title: string }[]; playlists?: string[];
+  pinned_comment?: string; call_to_action?: string; recommendation?: string; findings?: Finding[];
+}
+
+export interface ConceptView {
+  id: number; video_id: number; version: number; status: string; overlay_text: string; composition: string; palette: string[];
+  relation_to_content: string; findings: Finding[]; created_by: string; approved_by: string | null; approved_at: string | null; note: string;
+}
+
+export interface Packaging {
+  video_id: number; channel: string | null;
+  metadata: { approved: MetadataSetView | null; latest: MetadataSetView | null; history: MetadataSetView[]; matches_video: boolean };
+  thumbnail_concept: { approved: ConceptView | null; latest: ConceptView | null };
+  chapters: { available: boolean; reason: string; timing: string; proposed: { start_s: number; title: string }[] };
+  limits: Record<string, number>; limits_basis: string; gate_issues: { code: string; message: string }[]; unavailable: string[];
+}

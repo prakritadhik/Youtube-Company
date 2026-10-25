@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { use } from "react";
 import { useApi } from "@/lib/api";
+import { useAuth } from "@/components/auth";
+import { PackagingCards } from "@/components/packaging";
 import { Badge, Card, Empty, ErrorNote, KeyValue, List, Loading, PageHeader, Severity, StatusBadge, Table, Td, Th } from "@/components/ui";
 import { fmtDate, titleCase } from "@/lib/format";
 import type { Tone, VideoDetail } from "@/lib/types";
@@ -11,6 +13,7 @@ const checkTone: Record<string, Tone> = { pass: "ok", warn: "warn", fail: "dange
 
 export default function VideoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { can } = useAuth();
   const { data: v, error, loading } = useApi<VideoDetail>(`/api/videos/${id}`, { refreshMs: 20000 });
   if (loading && !v) return <Loading />;
   if (error) return <ErrorNote error={error} />;
@@ -31,14 +34,14 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
       />
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-6 xl:col-span-2">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
           <Card title="Video">
             {v.has_video_file ? (
               <video controls preload="metadata" poster={v.has_thumbnail ? `/api/videos/${v.id}/media/thumbnail` : undefined}
                 src={`/api/videos/${v.id}/media/final`} className="aspect-video w-full rounded-xl bg-black" aria-label={`Video: ${v.title}`} />
             ) : <Empty title="No video file yet" hint="The render step has not produced a file." />}
             {v.honesty && <p className="mt-3 text-sm text-muted">{v.honesty}</p>}
-            {v.description && <p className="mt-3 text-sm">{v.description}</p>}
+            {v.description && <p className="mt-3 whitespace-pre-line text-sm">{v.description}</p>}
           </Card>
 
           {v.text && (
@@ -46,6 +49,8 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{v.text.text}</pre>
             </Card>
           )}
+
+          <PackagingCards videoId={v.id} canWrite={can("video:manage")} />
 
           <Card title="Originality & rights report" subtitle={v.rights ? `Review v${v.rights.version}, ${fmtDate(v.rights.created_at)}` : undefined}
             action={v.rights && <StatusBadge status={v.rights.status} />}>
@@ -96,7 +101,7 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Card title="Publication gate" subtitle="Everything that currently stops this video from going out.">
             {blockers.length === 0 ? <p className="text-sm text-ok">Nothing is stopping publication.</p> :
               <ul className="space-y-2 text-sm">{blockers.map((i) => <li key={i.code} className="flex gap-2"><Severity level={i.code === "DEMO_CONTENT" || i.code.startsWith("MODE") ? "info" : "medium"} /><span>{i.message}</span></li>)}</ul>}

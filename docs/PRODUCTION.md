@@ -40,6 +40,21 @@ After the tasks, three explicit finalizers apply verdicts to the video:
 
 Only then can the video enter the publishing queue, and only if every gate condition holds ([gate rules](../README.md)).
 
+## Research and packaging (Phase 3)
+
+Phase 3 adds the steps around production. Full detail: [RESEARCH.md](RESEARCH.md).
+
+* **Source-based channels** (Medicine Information) start the chain with a `manual.research` task for the Research
+  Specialist; the brief cannot start until that task is verified.
+* **Metadata** is a separate queue task (`seo.prepare_metadata`) created by the Research and Growth manager
+  (`workflow.start_packaging`), owned by the Keyword and SEO Specialist, waiting for the script and soundtrack. It drafts and
+  checks a set but **applies nothing**: a research or publishing manager approves it, and only approval writes the title,
+  description, tags, hashtags and chapters onto the video.
+* **The publication gate now requires approved metadata** that still matches the video (`METADATA_NOT_APPROVED`,
+  `METADATA_CHANGED_AFTER_APPROVAL`; neither can be waived).
+* An approved **thumbnail concept** supplies the thumbnail's overlay text; its palette and composition guide a person or
+  a future image provider (the local generator only draws text on a generated backdrop).
+
 ## Originality and rights screening
 
 Status comes **only from findings**; similarity numbers are recorded but never decide anything.
@@ -95,7 +110,7 @@ replace the mandatory human medical review.
 cd backend && python -m app.cli demo-production        # about 20 s at 720p
 ```
 
-Creates a clearly-labelled DEMO video through the real pipeline and prints the result. Open the dashboard → Happy
+Creates a clearly-labelled DEMO video through the real pipeline (including a thumbnail concept and metadata that are checked and approved by the research department) and prints the result. Open the dashboard → Happy
 Birthday Songs → the DEMO video to watch it and read its QA and rights reports. Demo videos can **never** be
 published (`DEMO_CONTENT` is not waivable). The demo's lyrics are sample text written by the build assistant and are
 labelled as such.

@@ -4,16 +4,18 @@ _Last updated: 2026-10-25 · Branch `claude/sweet-hamilton-hvxkym`_
 
 ## Summary
 
-**Phases 1 (Foundation) and 2 (local video production) are built, tested and runnable.** Phases 3–7 are not started.
-The system can now assemble, check and rights-screen a real video from local assets. It does **not** yet call any AI
-provider, connect to YouTube, or publish anything, and it is not autonomous. The soundtrack is an instrumental with
-**no vocals**; a sung birthday song needs a music provider that is not connected.
+**Phases 1 (Foundation), 2 (local video production) and 3 (research, planning and packaging) are built, tested and runnable.**
+Phases 4–7 are not started. The system can assemble, check and rights-screen a real video from local assets, plan content
+per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts. It does **not** yet call
+any AI provider, connect to YouTube, or publish anything, and it is not autonomous. The soundtrack is an instrumental with
+**no vocals**; a sung birthday song needs a music provider that is not connected. Search, trend, keyword and audience data
+are **unavailable** (nothing is estimated), and titles and descriptions are plain template drafts, not model-written.
 
 | Phase | State | Notes |
 |---|---|---|
 | 1 Foundation | ✅ built and tested | Acceptance criteria met on Linux; see evidence below. Windows scripts untested. |
 | 2 Real video production | ✅ built and tested (local assets) | One validated demo video produced; sung music, AI art and LLM drafting need providers (see "Needs you") |
-| 3 Research and SEO | ⬜ not started | |
+| 3 Research and SEO | ✅ built and tested (no data source / language model) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
 | 4 YouTube integration | ⬜ not started | Needs your Google Cloud OAuth client |
 | 5 Analytics and community | ⬜ not started | Depends on 4 |
 | 6 Management and improvement | 🟨 foundation only | Reporting chain, board, acknowledgements exist as deterministic code; no LLM narrative, no experiments module |
@@ -46,14 +48,28 @@ provider, connect to YouTube, or publish anything, and it is not autonomous. The
 | Rights are screened | Originality engine, asset licence register and CEO re-computation (`ceo_inspect`); copied text, reused scenes/thumbnails, unlicensed or modified assets and the traditional "Happy Birthday" refrain are each covered by a test |
 | It cannot reach YouTube by accident | The demo video carries `DEMO_CONTENT`, which no waiver or approval can clear; the gate stays fail-closed |
 
+## Phase 3 acceptance criteria
+
+> A content brief can move through research, scripting, metadata preparation, and approval with evidence and persistent records.
+
+| Criterion | Evidence |
+|---|---|
+| Research | Ideas and notes are persistent records; medicine ideas cannot be approved without two sources, one authoritative; `research.fetch_source` tasks store a hashed snapshot that the manager re-verifies; `test_an_approved_idea_becomes_a_video_with_its_sources` |
+| Scripting | An approved idea becomes a video whose sources are copied into the script's citable source list; medicine chains start with a verified research task before the brief (`test_source_based_channels_must_record_sources_before_the_brief`) |
+| Metadata preparation | `seo.prepare_metadata` task by the Keyword and SEO Specialist produces a checked set with evidence (file + record) that the research manager verifies; nothing is applied yet |
+| Approval | A different manager approves; blocking findings cannot be waived; revise-level findings need a recorded reason; approval re-checks, then writes the title/description/tags to the video (`test_preparing_metadata_creates_a_checked_set_but_changes_nothing_until_it_is_approved`) |
+| Enforced downstream | The publication gate refuses a video without approved metadata, or whose title/description was edited afterwards |
+| Live demonstration | `python -m app.cli demo-production` now also approves a thumbnail concept and metadata (with three measured chapters on the 38 s demo) and still ends with only `DEMO_CONTENT` blocking |
+| In a browser | Content-plan page (propose → assess → approve → start production; a sung idea is *parked*, not approved) and the video page's packaging cards, including a low-contrast thumbnail concept refused with the measured ratio; no horizontal overflow at 390 px; smoke test passes on a fresh install |
+
 ## Test results (actually run)
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **288 passed** (about 2 min serial; about 45 s with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **481 passed** (about 65 s with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
-| Frontend typecheck (`tsc --noEmit`) and production build | pass (13 routes, including `/videos/[id]`) |
+| Frontend typecheck (`tsc --noEmit`) and production build | pass (14 routes, including `/plan` and `/videos/[id]`) |
 | Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 11 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
 | Live concurrency stress (API + worker + 3rd process) | 150 concurrent writes, 60 tasks, 80 reads: 0 errors, audit chain intact over 352 events |
 | Video page in a real browser (demo data) | player, lyrics, rights report, 19 QA rows, provenance table render; no horizontal overflow, no console errors |
@@ -61,7 +77,8 @@ provider, connect to YouTube, or publish anything, and it is not autonomous. The
 
 Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_settings`, `test_tasks`, `test_board`,
 `test_reports`, `test_gate_videos`, `test_finance_backup_runner`, `test_api`, `test_migrations_docs`, `test_config`,
-`test_production_core`, `test_render_qa`, `test_originality`, `test_pipeline`, `test_elevenlabs`, `test_api_production`.
+`test_production_core`, `test_render_qa`, `test_originality`, `test_pipeline`, `test_elevenlabs`, `test_api_production`, `test_demo`,
+`test_research_safety`, `test_research_ideas`, `test_research_seo`, `test_research_workflow`, `test_api_research`.
 Mocks are used only in tests (no provider is called anywhere); the ElevenLabs client has only ever run against a mock transport.
 
 ## Implemented (Phase 1)
@@ -83,6 +100,14 @@ findings-only verdict and a CEO recomputation · provider registry with owner at
 ElevenLabs text-to-speech client (mock-tested only) · video page in the dashboard · `demo-production` command.
 Details: [docs/PRODUCTION.md](docs/PRODUCTION.md).
 
+## Implemented (Phase 3)
+
+Safe web fetcher (public addresses only, connection pinned to the checked address, robots.txt, size/time caps) · untrusted-text
+layer · research register with provenance · content ideas with deterministic assessment, explainable ordering, parking and
+approval · metadata sets with versioned checks and approval · measured chapters · thumbnail-concept checks · queue handlers ·
+research department claims verified by the CEO · publication gate requires approved, unmodified metadata · Content Plan page and
+packaging cards. Details: [docs/RESEARCH.md](docs/RESEARCH.md).
+
 ## Not implemented / known limitations
 
 * **No provider has been run live.** The ElevenLabs text-to-speech client exists but was written from public API
@@ -96,6 +121,14 @@ Details: [docs/PRODUCTION.md](docs/PRODUCTION.md).
 * **Audio fingerprinting is unavailable**, so external-provider audio always goes to human review. Text similarity does
   not detect synonym-level paraphrase, and nothing searches external lyric, music or footage databases.
 * Scenes and thumbnails are procedural placeholders, not illustration.
+* **No search, trend, keyword, competitor or audience data source is connected.** Those facts exist only if a person records
+  them with a source and a date; otherwise they read *unavailable*. No title or thumbnail is shown to perform better than another.
+* **Template wording.** Titles, descriptions and tags are plain template drafts from the brief. Ideas are proposed by a person.
+* **The fetcher has not touched the live internet** (the build environment's network policy blocks most hosts); it is tested
+  against a mock web server and a deliberate set of attacks, and the first real fetch is its live test.
+* **Word-based screening.** Distinctness and title accuracy compare words, not meaning. The thumbnail gate rule is not enforced yet
+  (an approved concept is advisory until an image provider makes thumbnails).
+* The platform limits used by the metadata checks are *reported* values; Phase 4 confirms them against the live API.
 * **Windows scripts are untested on Windows** (`setup.ps1`, `start.bat`, etc.). The Python code is cross-platform
   but only exercised on Linux.
 * No scheduler or daily operating cycle; reports are generated on demand (button / CLI / queue task).
@@ -108,17 +141,19 @@ Details: [docs/PRODUCTION.md](docs/PRODUCTION.md).
 ## Needs you (owner decisions / credentials)
 
 1. **Windows run-through:** run `scripts\windows\setup.ps1` then `start.bat` and tell me what fails.
-2. **Provider decisions** (each needs a key, your confirmation of the plan's terms in Settings → Providers, and your
+2. **(Optional now, needed for Phase 3 to be more than templates)** a source of search/trend data you are allowed to use
+   (for example an export from a tool you pay for) or the willingness to record observations by hand on ideas.
+3. **Provider decisions** (each needs a key, your confirmation of the plan's terms in Settings → Providers, and your
    approval of one small test generation before the app will spend anything):
    * a language-model API for drafting briefs, lyrics and scripts (a Claude Pro chat subscription is not assumed to
      cover API use);
    * ElevenLabs: an API key and a check that your plan's terms allow commercial use via the API. Music is the route to a
      *sung* song; text-to-speech is for narration only;
    * an image source (provider, licensed stock, or your own artwork) to replace the procedural placeholders.
-3. **Phase 4:** a Google Cloud project with the YouTube Data API enabled and an OAuth "Desktop app" client for each
+4. **Phase 4:** a Google Cloud project with the YouTube Data API enabled and an OAuth "Desktop app" client for each
    channel's Google account.
-4. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
-5. A named human reviewer process for medicine videos (today: you).
+5. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
+6. A named human reviewer process for medicine videos (today: you).
 
 ## Install verification
 

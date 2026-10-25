@@ -58,7 +58,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-6 xl:col-span-2">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
           <Card
             title="AI CEO — latest verified report"
             subtitle={rep ? `Generated ${fmtDate(rep.created_at)}` : undefined}
