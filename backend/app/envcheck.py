@@ -73,6 +73,7 @@ def inspect() -> dict[str, Any]:
         "ffmpeg_h264_encoder": bool(encoders is not None),
         "providers_configured": {
             "anthropic": s.anthropic_api_key is not None, "elevenlabs": s.elevenlabs_api_key is not None,
+            "google_oauth_client": bool(s.google_oauth_client_id) and s.google_oauth_client_secret is not None,
         },
         "data_dir": str(s.data_dir),
     }

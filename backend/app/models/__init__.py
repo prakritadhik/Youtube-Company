@@ -10,9 +10,10 @@ from app.models.research import ContentIdea, MetadataSet, ResearchNote, Thumbnai
 from app.models.settings import SettingRow
 from app.models.tasks import Evidence, Task, TaskDependency
 from app.models.videos import Video
+from app.models.youtube import QuotaEntry, YouTubeAuthState, YouTubeConnection, YouTubeUpload
 
 __all__ = [
     "Agent", "ApprovalRequest", "Asset", "AuditEvent", "BoardAcknowledgement", "BoardEntry",
-    "BoardEntryVersion", "BoardRelease", "Channel", "ContentIdea", "CreativeBrief", "Department", "Evidence", "LoginAttempt", "MetadataSet", "OriginalityReview", "QAReport",
-    "Report", "ResearchNote", "ScriptVersion", "SettingRow", "SourceRecord", "Task", "ThumbnailConcept", "TaskDependency", "UsageRecord", "User", "UserSession", "Video",
+    "BoardEntryVersion", "BoardRelease", "Channel", "ContentIdea", "CreativeBrief", "Department", "Evidence", "LoginAttempt", "MetadataSet", "OriginalityReview", "QAReport", "QuotaEntry",
+    "Report", "ResearchNote", "ScriptVersion", "SettingRow", "SourceRecord", "Task", "ThumbnailConcept", "TaskDependency", "UsageRecord", "User", "UserSession", "Video", "YouTubeAuthState", "YouTubeConnection", "YouTubeUpload",
 ]

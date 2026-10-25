@@ -36,6 +36,7 @@ _RECORD_TABLES: dict[str, str] = {
     "research_notes": "app.models.research.ResearchNote",
     "metadata_sets": "app.models.research.MetadataSet",
     "thumbnail_concepts": "app.models.research.ThumbnailConcept",
+    "youtube_uploads": "app.models.youtube.YouTubeUpload",
 }
 
 MACHINE_VERIFIABLE = {EvidenceKind.FILE, EvidenceKind.DB_RECORD, EvidenceKind.API_RESPONSE, EvidenceKind.TEST_RESULT}

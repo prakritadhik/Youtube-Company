@@ -77,6 +77,47 @@ def set_stage(db: Session, actor: Actor, video_id: int, to: VideoStage, note: st
     return v
 
 
+def record_upload(db: Session, actor: Actor, video_id: int, upload_id: int) -> Video:
+    """Record a *verified* YouTube upload on the video. This is the only way a video becomes SCHEDULED/PUBLISHED by upload."""
+    from app.models.youtube import YouTubeUpload
+
+    actor.require(P.VIDEO_MANAGE)
+    v = _get(db, video_id)
+    up = db.get(YouTubeUpload, upload_id)
+    if up is None or up.video_id != video_id or up.status != "VERIFIED" or not up.youtube_video_id:
+        raise VideoError("a verified upload (read back from YouTube) is required before a video can be recorded as scheduled or published")
+    v.youtube_video_id = up.youtube_video_id
+    md = dict(v.metadata_json or {})
+    md.update({"youtube_upload_id": up.id, "youtube_privacy": up.privacy_requested, "youtube_verified_at": (up.verification or {}).get("verified_at")})
+    if up.privacy_requested == "private" and up.publish_at:
+        v.stage, v.publish_at, md["youtube_state"] = VideoStage.SCHEDULED.value, up.publish_at, "SCHEDULED_ON_YOUTUBE"
+    elif up.privacy_requested == "private":
+        md["youtube_state"] = "UPLOADED_PRIVATE"  # on YouTube, deliberately not public: the stage does not change
+    else:
+        v.stage, v.published_at, md["youtube_state"] = VideoStage.PUBLISHED.value, utcnow(), "PUBLISHED"
+    v.metadata_json = md
+    v.updated_at = utcnow()
+    db.flush()
+    audit.record(db, actor, "video.upload_recorded", "video", v.id, {"upload": up.id, "youtube_video_id": up.youtube_video_id, "state": md["youtube_state"]})
+    return v
+
+
+def record_upload_problem(db: Session, actor: Actor, video_id: int, upload_id: int) -> Video:
+    """The video is on YouTube but private although public/unlisted was requested (an unverified API project). It is not published."""
+    from app.models.youtube import YouTubeUpload
+
+    actor.require(P.VIDEO_MANAGE)
+    v = _get(db, video_id)
+    up = db.get(YouTubeUpload, upload_id)
+    if up is None or up.video_id != video_id or up.status != "PRIVACY_LOCKED":
+        raise VideoError("no privacy-locked upload to record")
+    v.youtube_video_id = up.youtube_video_id
+    v.metadata_json = {**(v.metadata_json or {}), "youtube_upload_id": up.id, "youtube_state": "PRIVACY_LOCKED"}
+    db.flush()
+    audit.record(db, actor, "video.upload_privacy_locked", "video", v.id, {"upload": up.id, "youtube_video_id": up.youtube_video_id})
+    return v
+
+
 def _as_if_stage(v: Video, stage: VideoStage) -> Video:
     """Evaluate the queue-entry gate as though the video had finished packaging (without mutating it)."""
     probe = Video(**{c.name: getattr(v, c.name) for c in Video.__table__.columns})

@@ -4,10 +4,11 @@ _Last updated: 2026-10-25 · Branch `claude/sweet-hamilton-hvxkym`_
 
 ## Summary
 
-**Phases 1 (Foundation), 2 (local video production) and 3 (research, planning and packaging) are built, tested and runnable.**
-Phases 4–7 are not started. The system can assemble, check and rights-screen a real video from local assets, plan content
+**Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging) and 4 (YouTube integration, mock-tested
+only) are built and tested.** Phases 5–7 are not started. The system can assemble, check and rights-screen a real video from local assets, plan content
 per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts. It does **not** yet call
-any AI provider, connect to YouTube, or publish anything, and it is not autonomous. The soundtrack is an instrumental with
+any AI provider, and it has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
+anything, and it is not autonomous. The soundtrack is an instrumental with
 **no vocals**; a sung birthday song needs a music provider that is not connected. Search, trend, keyword and audience data
 are **unavailable** (nothing is estimated), and titles and descriptions are plain template drafts, not model-written.
 
@@ -16,7 +17,7 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 | 1 Foundation | ✅ built and tested | Acceptance criteria met on Linux; see evidence below. Windows scripts untested. |
 | 2 Real video production | ✅ built and tested (local assets) | One validated demo video produced; sung music, AI art and LLM drafting need providers (see "Needs you") |
 | 3 Research and SEO | ✅ built and tested (no data source / language model) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
-| 4 YouTube integration | ⬜ not started | Needs your Google Cloud OAuth client |
+| 4 YouTube integration | 🟨 built, **mock-tested only** | Sign-in, identity confirmation, resumable upload, thumbnail, scheduling, read-back verification, quota ledger; needs your OAuth client and a first real run (docs/YOUTUBE.md) |
 | 5 Analytics and community | ⬜ not started | Depends on 4 |
 | 6 Management and improvement | 🟨 foundation only | Reporting chain, board, acknowledgements exist as deterministic code; no LLM narrative, no experiments module |
 | 7 Controlled autonomy | 🟨 foundation only | Persistent queue, leases, retry, recovery, pause, backup exist; no scheduler / daily cycle / alerting |
@@ -62,14 +63,33 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 | Live demonstration | `python -m app.cli demo-production` now also approves a thumbnail concept and metadata (with three measured chapters on the 38 s demo) and still ends with only `DEMO_CONTENT` blocking |
 | In a browser | Content-plan page (propose → assess → approve → start production; a sung idea is *parked*, not approved) and the video page's packaging cards, including a low-contrast thumbnail concept refused with the measured ratio; no horizontal overflow at 390 px; smoke test passes on a fresh install |
 
+## Phase 4 acceptance criteria
+
+> Complete a real integration test with an authorized account, **or clearly document which external configuration remains necessary.**
+
+The first alternative is **not met**: no real account was used. The second is: [docs/YOUTUBE.md](docs/YOUTUBE.md) lists the six things only you
+can do (Google Cloud project, consent screen, Desktop OAuth client, attestation, connect and confirm each channel, switch to
+Approval-first) and a one-minute `youtube-selftest` that answers the open questions with real data.
+
+What *was* verified, against a mock that follows Google's documented protocol (it models the documentation, not Google):
+
+| Behaviour | Evidence |
+|---|---|
+| OAuth with PKCE, single-use state, minimal scopes; the channel Google reports must be confirmed by the owner, who also declares the audience; one YouTube channel per internal channel | `test_youtube_connection.py` (19) |
+| Tokens and upload-session URLs encrypted, key outside the database; a missing key is reported and never replaced; refused refresh → *needs reconnect* | same |
+| Upload re-checks the whole publication gate, attestation, file hash, quota at run time; no second copy of a video; interrupted uploads resume the same session byte-for-byte; quota exhaustion parks and later resumes | `test_youtube_upload.py` (32) |
+| Success only from a read-back on the expected channel with the requested title, category, audience, privacy and schedule; a privately-locked public upload is reported as **not published**; a wrong channel is a mismatch | same, plus five deliberate mutations that were confirmed to fail it |
+| Self-test uploads private, reads back, sets a thumbnail, deletes, never touches the catalogue | `test_youtube_selftest.py` |
+| API and dashboard: connect → callback → confirm; queue, list, abandon; viewers read-only; CSRF; the browser flow on a migrated install, 390 px width | `test_api_youtube.py` (10), Playwright run |
+
 ## Test results (actually run)
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **481 passed** (about 65 s with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **548 passed** (about 75 s with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
-| Frontend typecheck (`tsc --noEmit`) and production build | pass (14 routes, including `/plan` and `/videos/[id]`) |
+| Frontend typecheck (`tsc --noEmit`) and production build | pass (14 routes, including `/plan`, `/videos/[id]` and the YouTube cards) |
 | Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 11 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
 | Live concurrency stress (API + worker + 3rd process) | 150 concurrent writes, 60 tasks, 80 reads: 0 errors, audit chain intact over 352 events |
 | Video page in a real browser (demo data) | player, lyrics, rights report, 19 QA rows, provenance table render; no horizontal overflow, no console errors |
@@ -78,7 +98,8 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_settings`, `test_tasks`, `test_board`,
 `test_reports`, `test_gate_videos`, `test_finance_backup_runner`, `test_api`, `test_migrations_docs`, `test_config`,
 `test_production_core`, `test_render_qa`, `test_originality`, `test_pipeline`, `test_elevenlabs`, `test_api_production`, `test_demo`,
-`test_research_safety`, `test_research_ideas`, `test_research_seo`, `test_research_workflow`, `test_api_research`.
+`test_research_safety`, `test_research_ideas`, `test_research_seo`, `test_research_workflow`, `test_api_research`,
+`test_youtube_connection`, `test_youtube_upload`, `test_youtube_selftest`, `test_api_youtube`.
 Mocks are used only in tests (no provider is called anywhere); the ElevenLabs client has only ever run against a mock transport.
 
 ## Implemented (Phase 1)
@@ -108,9 +129,20 @@ approval · metadata sets with versioned checks and approval · measured chapter
 research department claims verified by the CEO · publication gate requires approved, unmodified metadata · Content Plan page and
 packaging cards. Details: [docs/RESEARCH.md](docs/RESEARCH.md).
 
+## Implemented (Phase 4)
+
+Google OAuth (PKCE, loopback via the backend), identity confirmation with an owner-declared audience, encrypted token storage with the key
+outside the database, resumable upload with resume and no-duplicate guarantees, thumbnails, scheduling, read-back verification, a local
+quota ledger, an idempotent `youtube.upload` queue task evidenced by saved API responses, `youtube-status` and `youtube-selftest`
+commands, Settings and video-page cards. Details: [docs/YOUTUBE.md](docs/YOUTUBE.md).
+
 ## Not implemented / known limitations
 
-* **No provider has been run live.** The ElevenLabs text-to-speech client exists but was written from public API
+* **YouTube has never been contacted.** Everything in Phase 4 is tested against a mock of Google's documented behaviour. Unconfirmed
+  until your first real run: that the resumable-upload and thumbnail calls match the live API, the real quota costs, whether public
+  uploads stay public (an unverified API project is *reported* to have them locked private), whether tokens last, and the loopback
+  redirect. No analytics, comments, post-upload metadata edits, playlists or deletes (other than the self-test's own video).
+* **No other provider has been run live either.** The ElevenLabs text-to-speech client exists but was written from public API
   knowledge and tested against a mock transport only (`verified_live` stays false). There is **no** adapter for ElevenLabs
   music (request format not verified), a language model, image/video generation, Canva or YouTube. `docs/PROVIDERS.md`
   grades every provider fact as Observed / Reported / Unknown.
@@ -150,8 +182,9 @@ packaging cards. Details: [docs/RESEARCH.md](docs/RESEARCH.md).
    * ElevenLabs: an API key and a check that your plan's terms allow commercial use via the API. Music is the route to a
      *sung* song; text-to-speech is for narration only;
    * an image source (provider, licensed stock, or your own artwork) to replace the procedural placeholders.
-4. **Phase 4:** a Google Cloud project with the YouTube Data API enabled and an OAuth "Desktop app" client for each
-   channel's Google account.
+4. **Phase 4 (blocks every real upload):** the Google Cloud setup in [docs/YOUTUBE.md](docs/YOUTUBE.md): project, YouTube Data API, consent
+   screen, a Desktop OAuth client in `.env`, your confirmation of the API terms, signing in to each channel and answering whether it is made
+   for kids, Approval-first mode, then `youtube-selftest`.
 5. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
 6. A named human reviewer process for medicine videos (today: you).
 

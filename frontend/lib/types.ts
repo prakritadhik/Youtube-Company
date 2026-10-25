@@ -182,3 +182,23 @@ export interface Packaging {
   chapters: { available: boolean; reason: string; timing: string; proposed: { start_s: number; title: string }[] };
   limits: Record<string, number>; limits_basis: string; gate_issues: { code: string; message: string }[]; unavailable: string[];
 }
+
+// --- Phase 4: YouTube --------------------------------------------------------------------------------------------
+export interface YtConnection {
+  status: string; google_channel_id?: string; google_channel_title?: string; google_channel_handle?: string | null; scopes?: string[];
+  made_for_kids?: boolean | null; category_id?: string; category_name?: string | null; confirmed_by?: string | null; confirmed_at?: string | null;
+  last_error?: string | null;
+}
+export interface YtStatus {
+  oauth_client_configured: boolean; live_verified: boolean; note: string; operating_mode: string;
+  channels: { channel: string; channel_name: string; connection: YtConnection }[];
+  categories: Record<string, string>;
+  upload_capability: { state: string; detail: string };
+  quota: { used_today: number; daily_limit: number; remaining: number; resets_at: string; costs: Record<string, number>; basis: string };
+}
+export interface YtUpload {
+  upload_id: number; status: string; youtube_video_id: string | null; privacy_requested: string; publish_at: string | null; thumbnail: string;
+  thumbnail_detail: string | null; error: string | null; watch_url: string | null; task_id: number | null; bytes_total: number; bytes_sent: number;
+  created_by: string; created_at: string; is_test: boolean; request: { title: string; made_for_kids: boolean; category_id: string };
+  verification: { outcome?: string; checks?: { check: string; ok: boolean; expected: unknown; actual: unknown }[]; processing?: string | null; failure_reason?: string | null };
+}

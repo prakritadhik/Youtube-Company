@@ -19,6 +19,7 @@ from app.api import (
     routes_executive,
     routes_production,
     routes_research,
+    routes_youtube,
 )
 from app.api.ratelimit import RateLimiter
 from app.config import get_settings
@@ -31,6 +32,9 @@ from app.security.permissions import PermissionDenied
 from app.services import approvals, board, control, evidence, finance, registry, reports, settings, tasks, videos
 from app.services import gate as gate_svc
 from app.storage import UnsafePath
+from app.youtube import connection as conn_svc
+from app.youtube import quota as quota_svc
+from app.youtube import upload as upload_svc
 
 log = logging.getLogger("api")
 
@@ -83,7 +87,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
     for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router,
-              routes_research.router):
+              routes_research.router, routes_youtube.router):
         app.include_router(r)
 
     @app.get("/api/health", tags=["system"])
@@ -119,6 +123,7 @@ def create_app() -> FastAPI:
         (reports.ReportError, 409), (evidence.EvidenceError, 422), (finance.BudgetExceeded, 402),
         (control.ExternalActionBlocked, 409), (ideas_svc.IdeaError, 409), (notes_svc.ResearchError, 422), (seo_svc.SeoError, 409),
         (thumbs_svc.ThumbError, 409),
+        (conn_svc.YouTubeError, 409), (upload_svc.UploadError, 409), (quota_svc.QuotaExceeded, 409),
     ):
         app.add_exception_handler(exc_type, err(code))
     app.add_exception_handler(Exception, unexpected)

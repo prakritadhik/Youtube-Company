@@ -57,8 +57,11 @@ class Settings(BaseSettings):
     # --- provider credentials (placeholders only in .env.example; used from later phases) ------
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     elevenlabs_api_key: SecretStr | None = Field(default=None, validation_alias="ELEVENLABS_API_KEY")
+    # YouTube OAuth client ("Desktop app" in the Google Cloud console). Created by the owner; never committed.
+    google_oauth_client_id: str | None = Field(default=None, validation_alias="GOOGLE_OAUTH_CLIENT_ID")
+    google_oauth_client_secret: SecretStr | None = Field(default=None, validation_alias="GOOGLE_OAUTH_CLIENT_SECRET")
 
-    @field_validator("anthropic_api_key", "elevenlabs_api_key", mode="before")
+    @field_validator("anthropic_api_key", "elevenlabs_api_key", "google_oauth_client_id", "google_oauth_client_secret", mode="before")
     @classmethod
     def _blank_means_unset(cls, v: object) -> object:
         """A placeholder line such as ``ELEVENLABS_API_KEY=`` in .env must not count as a configured key."""
@@ -78,13 +81,18 @@ class Settings(BaseSettings):
         return self.data_dir / "artifacts"
 
     @property
+    def secrets_dir(self) -> Path:
+        """Keys that must live outside the database (and outside database backups)."""
+        return self.data_dir / "secrets"
+
+    @property
     def backups_dir(self) -> Path:
         return self.data_dir / "backups"
 
     def secret_values(self) -> list[str]:
         """All configured secret strings, used by the redactor."""
         out: list[str] = []
-        for name in ("anthropic_api_key", "elevenlabs_api_key"):
+        for name in ("anthropic_api_key", "elevenlabs_api_key", "google_oauth_client_secret"):
             v = getattr(self, name)
             if v is not None and v.get_secret_value():
                 out.append(v.get_secret_value())

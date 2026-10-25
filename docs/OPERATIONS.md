@@ -49,6 +49,13 @@ when it is missing.
 * Fetching a public page for a source runs as a queue task (`research.fetch_source`) by a role with the web tool; it refuses
   internal addresses and pages that forbid robots (see SECURITY.md).
 
+## YouTube
+
+Setup and the first real test: [YOUTUBE.md](YOUTUBE.md). Day to day: *Settings → YouTube* shows each channel's connection and today's
+quota; a video's page has *Queue upload* (private first), the read-back evidence, and the owner's *Abandon*. `python -m app.cli
+youtube-status` prints the same offline. **Back up `data/secrets/token.key` along with `data/backups/`**; the key is deliberately not in
+the database backup. After a restore on a new machine without the key, reconnect each channel.
+
 ## Emergency pause
 
 Overview → **Emergency pause** (reason required). Immediately:
@@ -84,7 +91,7 @@ Environment & backups.
 is verified first and the current database is copied to `*.pre-restore-*.sqlite3` before it is replaced.
 
 Backups contain the **database only**. Generated media in `data/artifacts/` must be copied separately (they can be
-large). Copy the whole `data/` folder to an external drive for a full backup.
+large). Copy the whole `data/` folder (including `data/secrets/`, which holds the key that opens the stored YouTube permissions) to an external drive for a full backup.
 
 ## Upgrading
 

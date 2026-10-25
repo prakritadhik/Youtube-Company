@@ -80,9 +80,13 @@ REGISTRY: dict[str, Provider] = {
                     note="not built yet; a Claude Pro subscription does not include API usage"),),
     ),
     "youtube": Provider(
-        "youtube", "YouTube Data/Analytics API", False, None, True, None,
-        (Capability("youtube.upload", "Upload, thumbnails, scheduling", False, paid=False, note="Phase 4"),
+        "youtube", "YouTube Data/Analytics API", True, "google_oauth_client_secret", True, None,
+        (Capability("youtube.oauth", "Sign in to a channel with OAuth (PKCE) and confirm its identity", True,
+                    note="tested against a mock Google; not yet run against the real service"),
+         Capability("youtube.upload", "Upload, thumbnail, scheduling and read-back verification", True,
+                    note="tested against a mock Google; the owner's first real upload (selftest) is its live test"),
          Capability("youtube.analytics", "Channel and video metrics", False, note="Phase 5")),
+        docs="docs/YOUTUBE.md",
     ),
     "canva": Provider(
         "canva", "Canva", False, None, False, None,

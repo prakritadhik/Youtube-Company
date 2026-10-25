@@ -362,9 +362,11 @@ def test_requests_with_a_foreign_host_header_are_refused(client):
 def test_blank_provider_keys_are_not_reported_as_configured(owner_client, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     monkeypatch.setenv("ELEVENLABS_API_KEY", "   ")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", "")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", " ")
     reset_settings_cache()
     prov = owner_client.get("/api/diagnostics/environment").json()["environment"]["providers_configured"]
-    assert prov == {"anthropic": False, "elevenlabs": False}
+    assert prov == {"anthropic": False, "elevenlabs": False, "google_oauth_client": False}
     monkeypatch.setenv("ELEVENLABS_API_KEY", "sk_" + "a" * 32)
     reset_settings_cache()
     assert owner_client.get("/api/diagnostics/environment").json()["environment"]["providers_configured"]["elevenlabs"] is True

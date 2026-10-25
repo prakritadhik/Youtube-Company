@@ -5,6 +5,7 @@ import { use } from "react";
 import { useApi } from "@/lib/api";
 import { useAuth } from "@/components/auth";
 import { PackagingCards } from "@/components/packaging";
+import { YouTubeVideoCard } from "@/components/youtube";
 import { Badge, Card, Empty, ErrorNote, KeyValue, List, Loading, PageHeader, Severity, StatusBadge, Table, Td, Th } from "@/components/ui";
 import { fmtDate, titleCase } from "@/lib/format";
 import type { Tone, VideoDetail } from "@/lib/types";
@@ -51,6 +52,7 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
           )}
 
           <PackagingCards videoId={v.id} canWrite={can("video:manage")} />
+          <YouTubeVideoCard videoId={v.id} canWrite={can("video:manage")} demo={demo} />
 
           <Card title="Originality & rights report" subtitle={v.rights ? `Review v${v.rights.version}, ${fmtDate(v.rights.created_at)}` : undefined}
             action={v.rights && <StatusBadge status={v.rights.status} />}>

@@ -4,6 +4,7 @@ from app.production import narration, pipeline  # noqa: F401  (side effect: prod
 from app.research import workflow  # noqa: F401  (side effect: research and packaging task handlers)
 from app.services import board, tasks, videos  # noqa: F401  (side effect: approval handlers)
 from app.worker import handlers  # noqa: F401  (side effect: task handlers)
+from app.youtube import handlers as youtube_handlers  # noqa: F401  (side effect: the upload task handler)
 
 
 def load() -> None:

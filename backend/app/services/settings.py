@@ -40,10 +40,17 @@ DEFAULTS: dict[str, Any] = {
     "emergency_pause": {"active": False, "since": None, "by": None, "reason": None},
     # provider id -> {"api_access_confirmed": bool, "commercial_use_confirmed": bool, "note": str, "confirmed_at": iso}
     "provider_attestations": {},
+    # YouTube API budget. Costs are configuration, not constants: the figures below are the commonly documented defaults and
+    # the build environment could not confirm them (see docs/PROVIDERS.md). The Google Cloud console is the authority.
+    "youtube": {
+        "daily_quota_units": 10000,
+        "costs": {"videos.insert": 1600, "thumbnails.set": 50, "videos.list": 1, "channels.list": 1, "videos.update": 50, "videos.delete": 50},
+        "chunk_mb": 8,
+    },
 }
 
 # Settings that only the human owner may change. (Pausing is separately open to the CEO/system.)
-OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations"}
+OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations", "youtube"}
 
 _BUDGET_NUMERIC = {
     "daily_usd", "monthly_usd", "per_video_usd", "daily_model_requests", "daily_provider_requests",
@@ -95,6 +102,29 @@ def _validate(key: str, value: Any) -> Any:
         if value.get("comment_reply_policy", "draft_only") not in ("draft_only", "auto_low_risk"):
             raise SettingError("comment_reply_policy must be draft_only or auto_low_risk")
         return value
+    if key == "youtube":
+        if not isinstance(value, dict) or set(value) - {"daily_quota_units", "costs", "chunk_mb"}:
+            raise SettingError("youtube settings are daily_quota_units, costs and chunk_mb")
+        out = {}
+        if "daily_quota_units" in value:
+            v = value["daily_quota_units"]
+            if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= 10_000_000:
+                raise SettingError("daily_quota_units must be a whole number of units, 0 or more")
+            out["daily_quota_units"] = v
+        if "chunk_mb" in value:
+            v = value["chunk_mb"]
+            if isinstance(v, bool) or not isinstance(v, int) or not 1 <= v <= 64:
+                raise SettingError("chunk_mb must be a whole number from 1 to 64")
+            out["chunk_mb"] = v
+        if "costs" in value:
+            known = DEFAULTS["youtube"]["costs"]
+            costs = value["costs"]
+            if not isinstance(costs, dict) or set(costs) - set(known):
+                raise SettingError(f"costs may only name these methods: {sorted(known)}")
+            if any(isinstance(c, bool) or not isinstance(c, int) or c < 0 for c in costs.values()):
+                raise SettingError("each cost must be a whole number of units, 0 or more")
+            out["costs"] = {**known, **costs}
+        return out
     if key == "provider_attestations":
         if not isinstance(value, dict):
             raise SettingError("provider_attestations must be an object")

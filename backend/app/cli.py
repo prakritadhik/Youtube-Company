@@ -204,6 +204,43 @@ def cmd_demo_production(args: argparse.Namespace) -> int:
     return 0 if res["qa"]["passed"] else 1
 
 
+def cmd_youtube_status(_: argparse.Namespace) -> int:
+    from app.db import session_scope
+    from app.services import registry
+    from app.youtube import connection as conn_svc
+    from app.youtube import quota
+
+    registry.load()
+    with session_scope(write=False) as db:
+        st = conn_svc.status(db)
+        print(f"Google OAuth client configured: {'yes' if st['oauth_client_configured'] else 'NO (see docs/YOUTUBE.md)'}")
+        for ch in st["channels"]:
+            c = ch["connection"]
+            extra = f" -> {c.get('google_channel_title')} ({c.get('google_channel_id')}), made for kids: {c.get('made_for_kids')}" if c["status"] != "NOT_CONNECTED" else ""
+            print(f"  {ch['channel']}: {c['status']}{extra}")
+        q = quota.summary(db)
+        print(f"Quota used today (this app's own count): {q['used_today']} of {q['daily_limit']}; resets {q['resets_at']}")
+    return 0
+
+
+def cmd_youtube_selftest(args: argparse.Namespace) -> int:
+    from app.services import registry
+    from app.youtube import selftest
+
+    registry.load()
+    if not args.yes_upload_a_private_test_video:
+        print("This uploads a few seconds of generated test video to your YouTube channel as PRIVATE, then deletes it.\n"
+              "Add --yes-upload-a-private-test-video to confirm. Your operating mode must not be DEVELOPMENT (Settings).")
+        return 2
+    try:
+        report = selftest.run(args.channel, keep=args.keep)
+    except (selftest.SelfTestError, Exception) as e:  # noqa: BLE001 - say why, plainly
+        print(f"Self-test stopped: {e}")
+        return 1
+    print(json.dumps(report, indent=2))
+    return 0 if report["result"] in ("VERIFIED", "PRIVACY_LOCKED") else 1
+
+
 def cmd_verify_audit(_: argparse.Namespace) -> int:
     from app.db import session_scope
     from app.services import audit
@@ -255,6 +292,13 @@ def main(argv: list[str] | None = None) -> int:
     dp.add_argument("--height", type=int, default=720)
     dp.add_argument("--preset", default="veryfast", help="x264 speed preset (ultrafast … slow)")
     dp.set_defaults(fn=cmd_demo_production)
+    ys = sub.add_parser("youtube-status", help="show YouTube connections and today's quota use")
+    ys.set_defaults(fn=cmd_youtube_status)
+    yt_ = sub.add_parser("youtube-selftest", help="upload a tiny PRIVATE test video to a connected channel, read it back, then delete it")
+    yt_.add_argument("--channel", required=True, help="channel slug, e.g. happy-birthday-songs")
+    yt_.add_argument("--keep", action="store_true", help="do not delete the test video afterwards")
+    yt_.add_argument("--yes-upload-a-private-test-video", action="store_true")
+    yt_.set_defaults(fn=cmd_youtube_selftest)
     rp = sub.add_parser("restore", help="restore a backup (stop the app first)")
     rp.add_argument("path")
     rp.set_defaults(fn=cmd_restore)

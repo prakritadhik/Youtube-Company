@@ -23,6 +23,8 @@ agent, or request can do something the backend would not allow**, and that every
 | Backups | SQLite online backup + integrity check; restore verifies first and keeps a safety copy | `test_backup_*` |
 | Outbound web fetching (research) | The only place the company reaches arbitrary URLs. `http`/`https` on ports 80/443 only, no embedded credentials; **every address the host resolves to must be globally routable** (loopback, private, link-local incl. cloud metadata, CGNAT, multicast, reserved and IPv4-in-IPv6 or 6to4/Teredo forms are refused) and the **connection is pinned to the address that was checked**, so a host that changes its DNS answer between check and connect cannot steer a request inward; redirects re-validated (max 4); `robots.txt` honoured and fail-closed; size and time capped on the *decompressed* body; HTML/plain text only; hidden elements and scripts are not extracted | `test_research_safety.py` (66 tests; three deliberate code mutations were confirmed to fail it) |
 | Untrusted external text | Pages, comments and competitor material are cleaned (hidden/bidi characters stripped, length capped), scanned for instruction-like phrasing, stored as data and quoted as data. A flag is informational: no code path lets text change a permission, gate, budget or approval | `test_text_from_outside_is_data_and_changes_nothing`, `test_numbers_without_a_source_are_refused_and_planted_instructions_are_only_flagged` |
+| YouTube tokens | OAuth with PKCE and a single-use `state` (hash stored); minimal scopes (`youtube.upload`, `youtube.readonly`); refresh/access tokens and upload-session URLs encrypted with Fernet, key in `data/secrets/` outside the database and its backups; never written to audit, logs or API output; token sent only to Google https hosts; owner-only connect/confirm/disconnect | `test_youtube_connection.py`, `test_api_youtube.py` |
+| Publishing safety | Upload re-runs the full publication gate, the file hash, attestation, connection and quota at run time; one upload per video; interrupted uploads resume the same session; success only from a read-back on the expected channel | `test_youtube_upload.py` (five deliberate code mutations confirmed to fail it) |
 | Research tool allowlist | Fetching needs the role's `web.research` tool (`Actor.require_tool`); roles without it cannot record a fetched page | `test_a_role_without_the_web_tool_cannot_fetch` |
 
 Also verified on the live stack (not in the unit suite): 150 concurrent API writes + a second process enqueuing
@@ -39,8 +41,6 @@ Also verified on the live stack (not in the unit suite): 150 concurrent API writ
 
 ## Planned for later phases
 
-* OAuth refresh tokens for YouTube will be encrypted at rest (key kept outside the database) before the first
-  real connection (Phase 4).
 * **Prompt-injection posture for the LLM phases** (the data-handling half exists now, see the two research rows above): web pages, scripts, comments, uploaded files and model output
   are *data*. They never reach a code path that can change permissions, budgets, gates or settings, because those
   are enforced by ordinary code that does not read model output (see `settings.py`, `gate.py`, `permissions.py`).

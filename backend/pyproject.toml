@@ -17,6 +17,8 @@ dependencies = [
   "httpx>=0.27,<1",
   "pillow>=10.4,<13",
   "numpy>=1.26,<3",
+  "cryptography>=43,<51",
+  "tzdata>=2024.1; sys_platform == 'win32'",  # Windows has no system time-zone database
 ]
 
 [project.optional-dependencies]

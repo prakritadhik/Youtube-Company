@@ -5,6 +5,7 @@ import { api, useApi } from "@/lib/api";
 import { Badge, Banner, Button, Card, ConfirmDialog, ErrorNote, Field, inputCls, Loading, PageHeader } from "@/components/ui";
 import type { ProviderStatus, Tone } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
+import { YouTubeSettingsCard } from "@/components/youtube";
 
 interface Settings {
   settings: {
@@ -152,6 +153,8 @@ export default function SettingsPage() {
             </div>
           ) : <p className="text-sm text-muted">Not paused. Use the “Emergency pause” button on the Overview page to stop everything immediately.</p>}
         </Card>
+
+        <YouTubeSettingsCard />
 
         <Card title="Operating mode" subtitle="Start in Development; use Approval-first when testing real integrations.">
           <div className="grid gap-3 md:grid-cols-2">

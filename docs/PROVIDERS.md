@@ -50,10 +50,13 @@ then roles define permissions and duties only; the pipeline's deterministic part
 
 | Metadata limits used by the SEO checks (title 100 characters, description 5 000 bytes, tags 500 characters, hashtags ignored above 15, chapters from 0:00 / at least three / at least 10 s, no `<` `>`) | Taken from YouTube Help and API documentation as reported to the build environment; kept as named constants (`app/research/seo.py::LIMITS`) | Reported — confirmed or corrected against the live API in Phase 4 |
 
+| Do refresh tokens expire after 7 days while the OAuth consent screen is in "Testing"? | Reported by Google's documentation as understood by the build environment; not verified | Reported — the app detects a refused refresh and asks for a reconnect; docs/YOUTUBE.md tells the owner what to check |
+| Does a Desktop-app client accept a `http://localhost:<port>` redirect? | Reported (loopback redirects are the documented flow for installed apps); not verified | Reported |
+
 Design consequences (so the app is correct *whichever* statement is true): quota costs are **configuration, not
 constants**; after every upload the adapter **reads back `status.privacyStatus`** and reports a private-lock as a
 failure to publish rather than a success; the owner is told early that a compliance audit may be required before
-public uploads work. This is verified at runtime in Phase 4 with a real account.
+public uploads work. The code for this exists (Phase 4, tested against a mock) and is **verified only when the owner runs the first real upload**: see docs/YOUTUBE.md for what that confirms.
 
 ## Canva
 
