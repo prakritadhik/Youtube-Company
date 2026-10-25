@@ -35,7 +35,7 @@ produce videos, call any AI provider, connect to YouTube, or publish anything. I
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **178 passed** (about 24 s) |
+| Backend unit + API tests (`python -m pytest`) | **179 passed** (about 24 s) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
 | Frontend typecheck (`tsc --noEmit`) and production build | pass |

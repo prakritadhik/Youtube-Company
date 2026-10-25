@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, computed_field
+from pydantic import Field, SecretStr, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # --- provider credentials (placeholders only in .env.example; used from later phases) ------
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     elevenlabs_api_key: SecretStr | None = Field(default=None, validation_alias="ELEVENLABS_API_KEY")
+
+    @field_validator("anthropic_api_key", "elevenlabs_api_key", mode="before")
+    @classmethod
+    def _blank_means_unset(cls, v: object) -> object:
+        """A placeholder line such as ``ELEVENLABS_API_KEY=`` in .env must not count as a configured key."""
+        return None if v is None or (isinstance(v, str) and not v.strip()) else v
 
     @computed_field  # type: ignore[prop-decorator]
     @property

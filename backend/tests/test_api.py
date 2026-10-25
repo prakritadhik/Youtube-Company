@@ -398,3 +398,14 @@ def test_requests_with_a_foreign_host_header_are_refused(client):
     assert client.get("/api/health", headers={"host": "evil.example"}).status_code == 400
     assert client.get("/api/auth/status", headers={"host": "attacker.test:3000"}).status_code == 400
     assert client.get("/api/health", headers={"host": "127.0.0.1:8000"}).status_code == 200
+
+
+def test_blank_provider_keys_are_not_reported_as_configured(owner_client, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "   ")
+    reset_settings_cache()
+    prov = owner_client.get("/api/diagnostics/environment").json()["environment"]["providers_configured"]
+    assert prov == {"anthropic": False, "elevenlabs": False}
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "sk_" + "a" * 32)
+    reset_settings_cache()
+    assert owner_client.get("/api/diagnostics/environment").json()["environment"]["providers_configured"]["elevenlabs"] is True
