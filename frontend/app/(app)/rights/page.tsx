@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useApi } from "@/lib/api";
 import { Badge, Card, Empty, ErrorNote, Loading, PageHeader, StatusBadge, Table, Td, Th } from "@/components/ui";
 import { titleCase } from "@/lib/format";
@@ -18,7 +19,7 @@ function VideoTable({ rows, empty }: { rows: VideoItem[]; empty: string }) {
       <tbody>
         {rows.map((v) => (
           <tr key={v.id}>
-            <Td className="font-medium">{v.title}</Td>
+            <Td className="font-medium"><Link href={`/videos/${v.id}`} className="text-accent hover:underline">{v.title}</Link></Td>
             <Td>{v.channel ? titleCase(v.channel) : "—"}</Td>
             <Td><StatusBadge status={v.originality_status} /></Td>
             <Td>{v.ceo_rights_verified ? <Badge tone="ok">Yes</Badge> : <Badge>No</Badge>}</Td>

@@ -88,3 +88,35 @@ export interface ExecutiveReport {
     metrics_availability: Record<string, Availability>; legend: Record<string, string>;
   };
 }
+
+export interface AssetRow {
+  id: number; kind: string; role: string; provider: string; model: string | null; seed: number | null;
+  license_type: string; license_ref: string | null; commercial_use: string; attribution: string | null;
+  simulated: boolean; size_bytes: number; problems: { code: string; message: string }[];
+}
+export interface VideoDetail extends VideoItem {
+  channel_name: string | null; channel_policy: Record<string, boolean>; has_video_file: boolean; has_thumbnail: boolean;
+  description: string | null; tags: string[]; honesty: string;
+  brief: null | { version: number; status: string; created_by: string; reviewed_by: string | null; review_notes: string | null;
+    board_version_used: number | null; content: Record<string, unknown> };
+  text: null | { kind: string; version: number; author_kind: string; author: string; text: string; cited_claims: number };
+  sources: { id: number; url: string; title: string; publisher: string; retrieved_at: string; supports: string }[];
+  assets: AssetRow[];
+  rights: null | { status: string; version: number; created_at: string; reviewed_by: string;
+    findings: { severity: string; code: string; message: string }[];
+    corrective_actions: { code: string; action: string; severity: string }[];
+    distinctive_contributions: string[]; tools_used: string[]; limitations: string[]; status_basis: string };
+  qa: null | { passed: boolean; version: number; created_at: string;
+    checks: { id: string; name: string; status: string; detail: string; correction: string }[] };
+  gate_for_publishing: { allowed: boolean; issues: GateIssue[] };
+  tasks: TaskSummary[];
+}
+
+export interface ProviderCapability {
+  id: string; description: string; implemented: boolean; verified_live: boolean; paid: boolean; state: string; detail: string; note: string;
+}
+export interface ProviderStatus {
+  id: string; name: string; needs_key: boolean; key_configured: boolean | null; needs_attestation: boolean;
+  attestation: null | { api_access_confirmed: boolean; commercial_use_confirmed: boolean; note: string; confirmed_at: string };
+  capabilities: ProviderCapability[];
+}

@@ -20,6 +20,7 @@ from app.config import get_settings
 from app.db import session_scope
 from app.models.org import Channel
 from app.models.tasks import Task
+from app.providers.base import ProviderUnavailable
 from app.security.permissions import Actor
 from app.services import approvals, control, finance, tasks
 from app.services import settings as settings_svc
@@ -33,6 +34,14 @@ class PausedError(Exception):
 
 class NonRetryableError(Exception):
     """The failure cannot be fixed by running again."""
+
+
+class BlockedError(Exception):
+    """The task must wait for something a person (or another step) has to provide. It is parked, not failed or retried."""
+
+    def __init__(self, code: str, reason: str):
+        super().__init__(reason)
+        self.code, self.reason = code, reason
 
 
 @dataclass
@@ -67,6 +76,11 @@ class TaskContext:
         """Call immediately before an irreversible provider call (upload, paid generation, reply)."""
         with session_scope() as db:
             tasks.mark_external_action_started(db, self.task_id, self.worker_id, detail)
+
+    def clear_external_action_started(self) -> None:
+        """Call when the provider refused the request outright, so nothing was generated or charged."""
+        with session_scope() as db:
+            tasks.clear_external_action_started(db, self.task_id, self.worker_id)
 
 
 Handler = Callable[[TaskContext], HandlerResult]
@@ -112,7 +126,7 @@ class Runner:
                 tasks.release_for_pause(db, ctx.task_id, self.worker_id)
             log.info("task %s released: emergency pause", ctx.task_id)
             return
-        except (finance.BudgetExceeded, control.ExternalActionBlocked) as e:
+        except (finance.BudgetExceeded, control.ExternalActionBlocked, ProviderUnavailable, BlockedError) as e:
             with session_scope() as db:
                 tasks.block_run(db, self.actor, ctx.task_id, self.worker_id,
                                 f"{getattr(e, 'code', 'BLOCKED')}: {getattr(e, 'message', None) or getattr(e, 'reason', str(e))}")

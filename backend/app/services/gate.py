@@ -19,7 +19,7 @@ from app.storage import UnsafePath, resolve_data_path
 
 # The only gate issue an owner-approved exception can waive. Rights, originality, licence, QA,
 # medical-review and safety conditions can never be waived by anyone.
-WAIVABLE = frozenset({"STAGE_NOT_READY"})
+WAIVABLE = frozenset({"STAGE_NOT_READY"})  # DEMO_CONTENT is deliberately absent: demonstration videos can never be published
 
 
 @dataclass
@@ -68,6 +68,8 @@ def evaluate(db: Session, video: Video, *, purpose: str = "clear") -> GateResult
     channel = db.get(Channel, video.channel_id)
     policy = (channel.policy if channel else {}) or {}
 
+    if (video.metadata_json or {}).get("demo"):
+        add("DEMO_CONTENT", "This is a pipeline demonstration video; it can never be published.")
     if not _file_ok(video.final_video_path):
         add("FINAL_VIDEO_MISSING", "The final video file is missing or empty.")
     if not _file_ok(video.thumbnail_path):
@@ -82,8 +84,12 @@ def evaluate(db: Session, video: Video, *, purpose: str = "clear") -> GateResult
         add(f"ORIGINALITY_{status}", f"Originality and rights review status is {status}.")
     if not video.ceo_rights_verified:
         add("CEO_RIGHTS_NOT_VERIFIED", "The CEO has not independently verified the rights evidence.")
-    if video.asset_license_issues > 0:
-        add("ASSET_LICENSE_ISSUES", f"{video.asset_license_issues} asset(s) lack a verified licence.")
+    # The stored count can be stale, so the live asset register is consulted too (fail closed).
+    from app.production import assets as assets_svc
+
+    live = len(assets_svc.license_problems(db, video.id)) if video.id else 0
+    if video.asset_license_issues > 0 or live > 0:
+        add("ASSET_LICENSE_ISSUES", f"{max(video.asset_license_issues, live)} asset licence/provenance problem(s) are unresolved.")
 
     medical_required = bool(policy.get("human_medical_review_required")) or video.requires_medical_review
     if medical_required and video.medical_review_status != "APPROVED":

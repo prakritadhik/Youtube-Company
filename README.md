@@ -5,9 +5,11 @@ A locally-run, multi-agent platform for managing three YouTube channels — **Ha
 shared intelligence board that turns *verified* lessons into instructions, hard publication gates, budget
 controls and an owner dashboard at <http://localhost:3000>.
 
-> **Honest status:** Phase 1 (the management foundation) is built and tested. Video production, research/SEO,
-> YouTube upload, analytics/comments and the autonomous scheduler are **not built yet**. Nothing in this
-> repository publishes to YouTube, calls an AI provider, or renders a video today. See [STATUS.md](STATUS.md).
+> **Honest status:** Phase 1 (management foundation) and Phase 2 (a real, validated local video pipeline) are built and
+> tested. Research/SEO, YouTube upload, analytics/comments and the autonomous scheduler are **not built yet**.
+> Nothing here publishes to YouTube or calls an AI provider; the soundtrack is an algorithmic **instrumental with no
+> vocals**, and sung songs, AI illustration and AI-written scripts need providers that are not connected.
+> See [STATUS.md](STATUS.md) and [docs/PRODUCTION.md](docs/PRODUCTION.md).
 
 ## What works today (Phase 1)
 
@@ -19,12 +21,13 @@ controls and an owner dashboard at <http://localhost:3000>.
 | CEO verification | Manager reports are consolidated by the COO; the CEO re-runs every claim against the records. Contradicted claims are rejected and shown as disagreements; missing data is shown as *unavailable*, never zero |
 | Publication gate | Fail-closed backend rule: file/thumbnail/metadata present, QA passed, originality `PASS`, CEO rights sign-off, no unlicensed assets, **human** medical review for the medicine channel, operating mode and owner approval. Rights and medical conditions can never be waived |
 | Owner control | Operating modes (Development / Approval-first / Controlled autonomy / Paused), spending limits (default $0 = no paid use), emergency pause, approval center, hash-chained audit log, backup/restore |
+| Production | Brief → lyrics → soundtrack → scenes → captions → **FFmpeg render** → thumbnail → **19-check QA** → originality & rights review → CEO re-check, as a manager-verified task chain. Every asset carries provenance and a licence; failed QA opens correction tasks. `python -m app.cli demo-production` makes a labelled demo video in ~20 s → [PRODUCTION.md](docs/PRODUCTION.md) |
 | Dashboard | Executive overview, three channel pages, organization, intelligence board, approvals, originality & rights, executive reports, settings, diagnostics. Owner sees the verified executive layer by default; raw detail is a separate, audited, owner-only layer |
 
 ## Requirements
 
 * Windows 10/11 (primary target), macOS or Linux
-* Python 3.11+ · Node.js 20+ · (FFmpeg — only needed from Phase 2)
+* Python 3.11+ · Node.js 20+ · FFmpeg (needed for video rendering)
 * No GPU is required or assumed.
 
 ## Install and start
@@ -71,7 +74,7 @@ backend/     FastAPI + SQLAlchemy + Alembic (app/, migrations/, tests/)
 frontend/    Next.js 15 + TypeScript + Tailwind dashboard (+ e2e/smoke.cjs)
 launcher.py  starts API + worker + dashboard (cross-platform)
 scripts/     setup.sh, windows/*.ps1|*.bat
-docs/        ENVIRONMENT, IMPLEMENTATION_PLAN, SECURITY, OPERATIONS, TROUBLESHOOTING, PROVIDERS, AGENT_HIERARCHY
+docs/        ENVIRONMENT, IMPLEMENTATION_PLAN, PRODUCTION, SECURITY, OPERATIONS, TROUBLESHOOTING, PROVIDERS, AGENT_HIERARCHY
 data/        (git-ignored) database, artifacts, backups, logs
 ```
 
@@ -80,7 +83,7 @@ data/        (git-ignored) database, artifacts, backups, logs
 ```bash
 cd backend && source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m app.cli --help                       # migrate, seed, setup, api, worker, doctor, backup, restore, ...
-python -m pytest                               # 181 backend tests
+python -m pytest -n 4                          # 288 backend tests (~45 s; omit -n 4 to run serially)
 ruff check app tests migrations
 cd ../frontend && npx tsc --noEmit && npm run build
 node e2e/smoke.cjs                             # browser smoke test (needs Playwright; fresh data dir only)
@@ -97,7 +100,7 @@ commercial rights — [PROVIDERS.md](docs/PROVIDERS.md) lists what must be verif
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Foundation (this release) | **built, tested** |
-| 2 | Real video production: briefs, scripts, assets/provenance, FFmpeg, captions, thumbnails, originality review | not started |
+| 2 | Real video production: briefs, scripts, assets/provenance, FFmpeg, captions, thumbnails, originality review | **built, tested** (local assets; sung music/AI art/LLM drafting need providers) |
 | 3 | Research, SEO, content planning | not started |
 | 4 | YouTube OAuth, upload, scheduling, quota | not started (needs your Google Cloud OAuth client) |
 | 5 | Analytics, comments, reply drafting | not started |

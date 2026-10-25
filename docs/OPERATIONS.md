@@ -21,6 +21,20 @@ cannot repeat").
 
 Medicine content is never published without a human medical review, in any mode.
 
+## Trying the production pipeline
+
+```
+cd backend
+python -m app.cli demo-production            # about 20 s; --width/--height/--preset change quality
+```
+
+Renders a clearly-labelled DEMO video through the real task chain (needs FFmpeg on PATH). It appears under Birthday
+Songs with its QA and rights reports. Demo videos can never be published. Run it against a scratch data folder
+(`YTC_DATA_DIR=...`) if you do not want a demo video in your real data.
+
+FFmpeg on Windows: `winget install Gyan.FFmpeg`, then open a new terminal. `python launcher.py --check` prints a note
+when it is missing.
+
 ## Emergency pause
 
 Overview → **Emergency pause** (reason required). Immediately:

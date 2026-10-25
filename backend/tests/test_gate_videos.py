@@ -253,3 +253,16 @@ def test_approval_requests_dedupe_per_subject(db, agent):
     a = videos.request_medical_review(db, agent("production-manager"), v.id, summary="s", evidence=[])
     b = videos.request_medical_review(db, agent("production-manager"), v.id, summary="again", evidence=[])
     assert a.id == b.id and ApprovalKind.MEDICAL_REVIEW.value == a.kind
+
+
+def test_demonstration_videos_can_never_be_published_or_queued(db, agent, owner):
+    v = make_ready_video(db, agent)
+    v.metadata_json = {**v.metadata_json, "demo": True}
+    db.flush()
+    pm = agent("production-manager")
+    with pytest.raises(gate.GateBlocked) as e:
+        videos.set_stage(db, pm, v.id, V.READY)
+    assert e.value.result.codes() == ["DEMO_CONTENT"]  # everything else is fine; this alone stops it
+    assert "DEMO_CONTENT" in gate.evaluate(db, v, purpose="publish").codes()
+    with pytest.raises(videos.VideoError, match="never be waived"):
+        videos.request_gate_exception(db, agent("coo"), v.id, ["DEMO_CONTENT"], "just this once")

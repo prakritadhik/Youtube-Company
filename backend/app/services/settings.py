@@ -11,7 +11,7 @@ from app.enums import OperatingMode
 from app.models.settings import SettingRow
 from app.security.permissions import Actor, P, PermissionDenied
 from app.services import audit
-from app.timeutil import utcnow
+from app.timeutil import iso, utcnow
 
 
 class SettingError(ValueError):
@@ -38,10 +38,12 @@ DEFAULTS: dict[str, Any] = {
         "max_publishes_per_day_per_channel": 0,
     },
     "emergency_pause": {"active": False, "since": None, "by": None, "reason": None},
+    # provider id -> {"api_access_confirmed": bool, "commercial_use_confirmed": bool, "note": str, "confirmed_at": iso}
+    "provider_attestations": {},
 }
 
 # Settings that only the human owner may change. (Pausing is separately open to the CEO/system.)
-OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy"}
+OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations"}
 
 _BUDGET_NUMERIC = {
     "daily_usd", "monthly_usd", "per_video_usd", "daily_model_requests", "daily_provider_requests",
@@ -93,6 +95,19 @@ def _validate(key: str, value: Any) -> Any:
         if value.get("comment_reply_policy", "draft_only") not in ("draft_only", "auto_low_risk"):
             raise SettingError("comment_reply_policy must be draft_only or auto_low_risk")
         return value
+    if key == "provider_attestations":
+        if not isinstance(value, dict):
+            raise SettingError("provider_attestations must be an object")
+        out = {}
+        for pid, att in value.items():
+            if not isinstance(att, dict) or set(att) - {"api_access_confirmed", "commercial_use_confirmed", "note"}:
+                raise SettingError(f"invalid attestation for '{pid}'")
+            if not all(isinstance(att.get(k, False), bool) for k in ("api_access_confirmed", "commercial_use_confirmed")):
+                raise SettingError("attestation flags must be true or false")
+            out[str(pid)] = {"api_access_confirmed": bool(att.get("api_access_confirmed")),
+                             "commercial_use_confirmed": bool(att.get("commercial_use_confirmed")),
+                             "note": str(att.get("note", ""))[:500], "confirmed_at": iso(utcnow())}
+        return out
     raise SettingError(f"setting '{key}' cannot be written directly")
 
 
@@ -105,7 +120,7 @@ def set_value(db: Session, actor: Actor, key: str, value: Any) -> Any:
         raise PermissionDenied(actor, P.SETTINGS_WRITE)
     clean = _validate(key, value)
     before = get(db, key)
-    merged = {**before, **clean} if isinstance(clean, dict) else clean
+    merged = ({**before, **clean} if key != "provider_attestations" else clean) if isinstance(clean, dict) else clean
     row = db.get(SettingRow, key)
     if row is None:
         db.add(SettingRow(key=key, value=merged, updated_by=actor.label, updated_at=utcnow()))

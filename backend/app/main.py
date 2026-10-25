@@ -12,7 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app import migrations_check
-from app.api import routes_auth, routes_control, routes_diagnostics, routes_executive
+from app.api import routes_auth, routes_control, routes_diagnostics, routes_executive, routes_production
 from app.api.ratelimit import RateLimiter
 from app.config import get_settings
 from app.security import redaction
@@ -71,7 +71,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityMiddleware, allowed_origins=origins, limiter=RateLimiter(s.api_rate_limit_per_minute))
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
-    for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router):
+    for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router):
         app.include_router(r)
 
     @app.get("/api/health", tags=["system"])

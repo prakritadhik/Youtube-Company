@@ -192,6 +192,18 @@ def cmd_export_org(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo_production(args: argparse.Namespace) -> int:
+    from app.production import demo
+    from app.services import registry
+
+    registry.load()
+    print("Running the real production pipeline on a clearly-labelled DEMO video (never publishable)...")
+    res = demo.run(args.width, args.height, args.preset)
+    print(json.dumps(res, indent=2))
+    print("\nOpen the dashboard → the Happy Birthday Songs channel → the DEMO video to watch it and read its QA and rights reports.")
+    return 0 if res["qa"]["passed"] else 1
+
+
 def cmd_verify_audit(_: argparse.Namespace) -> int:
     from app.db import session_scope
     from app.services import audit
@@ -238,6 +250,11 @@ def main(argv: list[str] | None = None) -> int:
     ep = sub.add_parser("export-org", help="write the agent hierarchy and permission matrix as Markdown")
     ep.add_argument("path", nargs="?", default=str(BACKEND_DIR.parent / "docs" / "AGENT_HIERARCHY.md"))
     ep.set_defaults(fn=cmd_export_org)
+    dp = sub.add_parser("demo-production", help="produce a labelled demonstration video through the real pipeline (needs FFmpeg)")
+    dp.add_argument("--width", type=int, default=1280)
+    dp.add_argument("--height", type=int, default=720)
+    dp.add_argument("--preset", default="veryfast", help="x264 speed preset (ultrafast … slow)")
+    dp.set_defaults(fn=cmd_demo_production)
     rp = sub.add_parser("restore", help="restore a backup (stop the app first)")
     rp.add_argument("path")
     rp.set_defaults(fn=cmd_restore)

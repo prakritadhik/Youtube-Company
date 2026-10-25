@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { api, useApi } from "@/lib/api";
 import { Badge, Banner, Button, Card, ConfirmDialog, ErrorNote, Field, inputCls, Loading, PageHeader } from "@/components/ui";
+import type { ProviderStatus, Tone } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 
 interface Settings {
@@ -33,6 +34,73 @@ const BUDGET_FIELDS: [string, string, string][] = [
   ["max_task_attempts", "Maximum attempts per task", "Bounds automatic retries"],
   ["max_concurrent_tasks", "Concurrent tasks", ""],
 ];
+
+const STATE_TONE: Record<string, Tone> = { ready: "ok", needs_attestation: "warn", not_configured: "warn", paused: "danger", not_implemented: "neutral", missing_tool: "danger" };
+const STATE_LABEL: Record<string, string> = {
+  ready: "Ready", needs_attestation: "Needs your confirmation", not_configured: "No API key", paused: "Paused", not_implemented: "Not built yet", missing_tool: "Tool missing",
+};
+
+function ProvidersCard({ onChanged }: { onChanged: () => void }) {
+  const { data, reload, error } = useApi<{ providers: ProviderStatus[]; note: string }>("/api/providers");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<{ message: string } | null>(null);
+  const [form, setForm] = useState<Record<string, { api: boolean; com: boolean; note: string }>>({});
+  if (!data) return <Card title="Providers"><Loading /></Card>;
+
+  const current = Object.fromEntries(data.providers.filter((p) => p.attestation).map((p) => [p.id, {
+    api_access_confirmed: p.attestation!.api_access_confirmed, commercial_use_confirmed: p.attestation!.commercial_use_confirmed, note: p.attestation!.note }]));
+  const save = async (id: string, value: Record<string, unknown>) => {
+    setBusy(id); setErr(null);
+    try { await api("/api/settings/provider_attestations", { method: "PUT", body: { value } }); await reload(); onChanged(); }
+    catch (e) { setErr(e as Error); } finally { setBusy(null); }
+  };
+
+  return (
+    <Card title="Providers" subtitle={data.note}>
+      <ErrorNote error={err ?? error} />
+      <div className="space-y-5">
+        {data.providers.map((p) => {
+          const f = form[p.id] ?? { api: p.attestation?.api_access_confirmed ?? false, com: p.attestation?.commercial_use_confirmed ?? false, note: p.attestation?.note ?? "" };
+          return (
+            <div key={p.id} className="rounded-xl border border-line p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-medium">{p.name}</h3>
+                <div className="flex gap-1.5">
+                  {p.needs_key && <Badge tone={p.key_configured ? "ok" : "warn"}>{p.key_configured ? "API key present" : "No API key"}</Badge>}
+                  {p.needs_attestation && <Badge tone={p.attestation ? "ok" : "neutral"}>{p.attestation ? "You confirmed the terms" : "Terms not confirmed"}</Badge>}
+                </div>
+              </div>
+              <ul className="mt-3 space-y-2 text-sm">
+                {p.capabilities.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-start justify-between gap-2">
+                    <span><span className="font-medium">{c.description}</span>
+                      {c.note && <span className="block text-xs text-muted">{c.note}</span>}
+                      {c.state !== "ready" && c.state !== "not_implemented" && <span className="block text-xs text-muted">{c.detail}</span>}</span>
+                    <span className="flex gap-1.5">{c.paid && <Badge>paid</Badge>}
+                      {c.implemented && !c.verified_live && p.needs_key && <Badge tone="warn" title="Written against the public API but never run against a real account">unverified live</Badge>}
+                      <Badge tone={STATE_TONE[c.state] ?? "neutral"}>{STATE_LABEL[c.state] ?? c.state}</Badge></span>
+                  </li>
+                ))}
+              </ul>
+              {p.needs_attestation && p.capabilities.some((c) => c.implemented) && (
+                <form className="mt-4 space-y-3 border-t border-line pt-4" onSubmit={(e) => { e.preventDefault(); save(p.id, { ...current, [p.id]: { api_access_confirmed: f.api, commercial_use_confirmed: f.com, note: f.note } }); }}>
+                  <p className="text-sm text-muted">Before this provider can be used, confirm from your own plan and its current terms:</p>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.api} onChange={(e) => setForm({ ...form, [p.id]: { ...f, api: e.target.checked } })} /> My plan includes API access for this</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.com} onChange={(e) => setForm({ ...form, [p.id]: { ...f, com: e.target.checked } })} /> The terms allow commercial use of the generated output</label>
+                  <input className={inputCls} placeholder="Where you checked (plan name, date, terms page)" value={f.note} onChange={(e) => setForm({ ...form, [p.id]: { ...f, note: e.target.value } })} aria-label="Note" />
+                  <div className="flex gap-2">
+                    <Button type="submit" variant="primary" busy={busy === p.id}>Save confirmation</Button>
+                    {p.attestation && <Button type="button" busy={busy === p.id} onClick={() => { const { [p.id]: _drop, ...rest } = current; void _drop; save(p.id, rest); }}>Revoke</Button>}
+                  </div>
+                </form>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
   const s = useApi<Settings>("/api/settings");
@@ -123,6 +191,8 @@ export default function SettingsPage() {
             })}
           </div>
         </Card>
+
+        <ProvidersCard onChanged={() => setMsg("Provider confirmation updated.")} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card title="Add a read-only viewer" subtitle="Viewers see the executive layer only.">

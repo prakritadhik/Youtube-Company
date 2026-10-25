@@ -346,6 +346,14 @@ def mark_external_action_started(db: Session, task_id: int, worker_id: str, deta
     db.flush()
 
 
+def clear_external_action_started(db: Session, task_id: int, worker_id: str) -> None:
+    """The provider definitively refused the call (bad key, rate limit): nothing happened, so a retry is safe."""
+    task = _get(db, task_id)
+    if task.status == TS.RUNNING.value and task.locked_by == worker_id:
+        task.output_refs = {k: v for k, v in task.output_refs.items() if k != "external_action_started"}
+        db.flush()
+
+
 def _attach_evidence(db: Session, actor: Actor, task: Task, specs: list[dict[str, Any]]) -> None:
     for spec in specs:
         evidence.add(

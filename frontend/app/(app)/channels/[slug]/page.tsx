@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { use } from "react";
 import { useApi } from "@/lib/api";
 import { Badge, Card, Empty, ErrorNote, List, Loading, PageHeader, StatusBadge, Table, Td, Th, Unavailable } from "@/components/ui";
@@ -45,7 +46,7 @@ export default function ChannelPage({ params }: { params: Promise<{ slug: string
             <tbody>
               {data.production.map((v) => (
                 <tr key={v.id}>
-                  <Td className="font-medium">{v.title}</Td>
+                  <Td className="font-medium"><Link href={`/videos/${v.id}`} className="text-accent hover:underline">{v.title}</Link></Td>
                   <Td><Badge>{titleCase(v.stage.toLowerCase())}</Badge></Td>
                   <Td><StatusBadge status={v.originality_status} /></Td>
                   <Td>{v.gate.allowed ? <Badge tone="ok">Clear</Badge> :
