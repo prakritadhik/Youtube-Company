@@ -10,6 +10,7 @@ import os
 import sys
 from pathlib import Path
 
+from pydantic import ValidationError
 from sqlalchemy import func, select
 
 from app.config import get_settings
@@ -241,7 +242,14 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("path")
     rp.set_defaults(fn=cmd_restore)
     args = p.parse_args(argv)
-    return args.fn(args)
+    try:
+        return args.fn(args)
+    except ValidationError as e:  # a bad value in .env or the environment: explain it, no traceback
+        print("There is a problem with your configuration (.env or environment variables):")
+        for err in e.errors():
+            print(f"  - {'.'.join(str(x) for x in err['loc'])}: {err['msg']}")
+        print("Tip: put comments on their own line in .env, never after a value.")
+        return 2
 
 
 if __name__ == "__main__":
