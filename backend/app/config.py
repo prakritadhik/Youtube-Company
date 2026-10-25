@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     frontend_origin: str = "http://localhost:3000"
+    allowed_hosts: str = "localhost,127.0.0.1,[::1]"  # Host headers the API will answer to
 
     # --- sessions / security -------------------------------------------------------------------
     session_ttl_hours: int = 12

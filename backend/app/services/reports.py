@@ -330,6 +330,41 @@ def _ceo_snapshot(db: Session) -> dict[str, Any]:
     return {"tasks_by_status": tasks, "videos_by_stage": videos, "pending_approvals": pending, "board_by_status": boards}
 
 
+def _compact_sections(sections: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Keep the owner-facing report concise without discarding anything the CEO verified.
+
+    * Verified zero counts ("0 tasks failed") are folded into a per-department "quiet" note; the
+      individual checks remain in the CEO verification detail (diagnostics).
+    * The same unavailable-data statement from several departments is shown once.
+    """
+    material: list[dict[str, Any]] = []
+    zero_depts: dict[str, int] = {}
+    active_depts: set[str] = set()
+    for f in sections["verified_facts"]:
+        dept = f.get("department")
+        if f.get("value") == 0 and dept:
+            zero_depts[dept] = zero_depts.get(dept, 0) + 1
+        else:
+            material.append(f)
+            if dept:
+                active_depts.add(dept)
+    sections["verified_facts"] = material
+
+    merged: dict[str, dict[str, Any]] = {}
+    for u in sections["unavailable_data"]:
+        entry = merged.setdefault(u["statement"], {"statement": u["statement"], "evidence_note": u.get("evidence_note"),
+                                                   "reported_by": []})
+        entry["reported_by"].append(u.get("department"))
+    sections["unavailable_data"] = [
+        {**e, "reported_by": sorted({d for d in e["reported_by"] if d})} for e in merged.values()
+    ]
+    return [
+        {"department": d, "verified_zero_checks": n,
+         "statement": "No task activity or open problems, verified from task records."}
+        for d, n in zero_depts.items() if d not in active_depts
+    ]
+
+
 def verify_and_publish(db: Session, actor: Actor, operations_report_id: int) -> Report:
     """The CEO re-checks every claim and issues the executive report."""
     actor.require(P.REPORT_VERIFY)
@@ -369,7 +404,8 @@ def verify_and_publish(db: Session, actor: Actor, operations_report_id: int) -> 
             sections[bucket].append({**entry, "evidence_note": res.detail})
         elif cls is ClaimClass.UNAVAILABLE:
             if res.status == "confirmed":
-                sections["unavailable_data"].append({"statement": c["text"], "evidence_note": res.detail})
+                sections["unavailable_data"].append({"statement": c["text"], "evidence_note": res.detail,
+                                                   "department": c.get("department")})
             else:
                 sections["unverified_claims"].append({**entry, "evidence_note": res.detail})
         else:
@@ -378,6 +414,8 @@ def verify_and_publish(db: Session, actor: Actor, operations_report_id: int) -> 
                 ClaimClass.RECOMMENDATION: "recommendations", ClaimClass.NEEDS_OWNER_APPROVAL: "needs_owner_approval",
             }[cls]
             sections[key].append({**entry, "note": "Not independently verifiable; shown with its stated class."})
+
+    quiet_departments = _compact_sections(sections)
 
     snap = _ceo_snapshot(db)
     chain = audit.verify_chain(db)
@@ -430,6 +468,7 @@ def verify_and_publish(db: Session, actor: Actor, operations_report_id: int) -> 
                            "audit_events_checked": chain["checked"]},
         "company_snapshot": snap,
         "sections": sections,
+        "quiet_departments": quiet_departments,
         "disagreements": disagreements,
         "risks": risks,
         "next_priorities": priorities,

@@ -9,7 +9,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app import migrations_check
 from app.api import routes_auth, routes_control, routes_diagnostics, routes_executive
 from app.api.ratelimit import RateLimiter
 from app.config import get_settings
@@ -56,6 +58,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         s.data_dir.mkdir(parents=True, exist_ok=True)
+        migrations_check.assert_db_current()  # refuse to run against an outdated schema
         log.info("API ready (env=%s)", s.env)
         yield
 
@@ -66,6 +69,7 @@ def create_app() -> FastAPI:
     origins = {s.frontend_origin, "http://localhost:3000", "http://127.0.0.1:3000",
                f"http://localhost:{s.port}", f"http://127.0.0.1:{s.port}"}
     app.add_middleware(SecurityMiddleware, allowed_origins=origins, limiter=RateLimiter(s.api_rate_limit_per_minute))
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
     for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router):
         app.include_router(r)

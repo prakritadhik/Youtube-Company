@@ -35,7 +35,7 @@ def api_env(env):
 
 
 def make_client(host="127.0.0.1") -> TestClient:
-    return TestClient(create_app(), client=(host, 50000), raise_server_exceptions=False)
+    return TestClient(create_app(), base_url="http://localhost", client=(host, 50000), raise_server_exceptions=False)
 
 
 @pytest.fixture
@@ -385,9 +385,16 @@ def test_channel_dashboard_labels_missing_data_instead_of_zeros(owner_client):
 
 def test_overview_distinguishes_missing_data_and_has_no_fake_report(owner_client):
     ov = owner_client.get("/api/executive/overview").json()
-    assert ov["latest_executive_report"] is None and "No executive report" in ov["executive_report_note"]
+    assert ov["latest_executive_report"] is None and "Nothing has been verified" in ov["executive_report_note"]
     assert ov["metrics_availability"]["youtube_analytics"]["available"] is False
     assert ov["company_status"]["operating_mode"] == "DEVELOPMENT" and ov["company_status"]["real_publishing_enabled"] is False
     assert ov["pipeline"]["total"] == 0 and ov["costs"]["limits"]["daily_usd"] == 0
     latest = owner_client.get("/api/executive/reports/latest").json()
     assert latest["available"] is False
+
+
+def test_requests_with_a_foreign_host_header_are_refused(client):
+    assert client.get("/api/health").status_code == 200
+    assert client.get("/api/health", headers={"host": "evil.example"}).status_code == 400
+    assert client.get("/api/auth/status", headers={"host": "attacker.test:3000"}).status_code == 400
+    assert client.get("/api/health", headers={"host": "127.0.0.1:8000"}).status_code == 200

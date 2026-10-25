@@ -76,7 +76,7 @@ def executive_overview(db: Session) -> dict[str, Any]:
             "period": latest.content.get("period"), "check_summary": latest.content.get("check_summary"),
             "next_priorities": latest.content.get("next_priorities", []),
         },
-        "executive_report_note": None if latest else "No executive report has been generated yet. Generate one from the Reports page.",
+        "executive_report_note": None if latest else "Nothing has been verified yet. Generate the first report to see what actually happened.",
         "pipeline": {
             "in_production": sum(1 for v in all_videos if v.stage in _IN_PRODUCTION),
             "awaiting_owner_approval": sum(1 for v in all_videos if v.owner_approval_status == "PENDING"),

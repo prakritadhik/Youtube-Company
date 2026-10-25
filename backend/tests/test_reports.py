@@ -146,7 +146,11 @@ def test_false_unavailability_claim_is_caught_when_source_is_connected(db, agent
 def test_quiet_period_is_reported_honestly_not_invented(db, agent):
     ex = reports.run_reporting_cycle(db, *window())
     assert ex.content["headline"].startswith("No tasks were created or completed")
-    assert ex.content["sections"]["verified_facts"][0]["value"] == 0  # a real, verified zero from the task table
+    # verified zeros are reported as "quiet departments", not silently dropped and not listed 35 times
+    assert len(ex.content["quiet_departments"]) == 7 and ex.content["sections"]["verified_facts"] == []
+    assert all(q["verified_zero_checks"] == 5 and "verified from task records" in q["statement"]
+               for q in ex.content["quiet_departments"])
+    assert ex.content["check_summary"]["confirmed"] == 42  # every check was still run
 
 
 def test_a_manager_report_that_went_stale_before_verification_is_flagged(db, agent):
@@ -219,3 +223,14 @@ def test_disagreeing_departments_are_flagged(db, agent):
     reports.build_department_report(db, agent("publishing-manager"), "publishing", s, e, [b])
     ops = reports.consolidate(db, agent("coo"), s, e)
     assert ops.content["disagreements"] and set(ops.content["disagreements"][0]["departments"]) == {"production", "publishing"}
+
+
+def test_owner_report_stays_concise_but_nothing_is_dropped_from_the_ceo_record(db, agent):
+    verified_task(db, agent, "script-lyrics-writer", "production-manager", "Write script")
+    ex = reports.run_reporting_cycle(db, *window())
+    facts = ex.content["sections"]["verified_facts"]
+    assert 0 < len(facts) <= 3 and all(f["value"] for f in facts)          # only material facts in Layer C
+    assert "production" not in {q["department"] for q in ex.content["quiet_departments"]}
+    assert len(ex.verification["results"]) == 42                              # all checks kept in Layer B
+    unavailable = ex.content["sections"]["unavailable_data"]
+    assert len(unavailable) == 1 and len(unavailable[0]["reported_by"]) == 7  # said once, with who reported it

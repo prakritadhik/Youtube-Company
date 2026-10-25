@@ -182,6 +182,15 @@ def cmd_restore(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_org(args: argparse.Namespace) -> int:
+    from app.agents.docs import render_hierarchy_markdown
+
+    out = Path(args.path)
+    out.write_text(render_hierarchy_markdown(), encoding="utf-8")
+    print(f"Wrote {out}")
+    return 0
+
+
 def cmd_verify_audit(_: argparse.Namespace) -> int:
     from app.db import session_scope
     from app.services import audit
@@ -225,6 +234,9 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--username", default="owner")
         sp.add_argument("--password-env", help="read the password from this environment variable (non-interactive)")
         sp.set_defaults(fn=fn)
+    ep = sub.add_parser("export-org", help="write the agent hierarchy and permission matrix as Markdown")
+    ep.add_argument("path", nargs="?", default=str(BACKEND_DIR.parent / "docs" / "AGENT_HIERARCHY.md"))
+    ep.set_defaults(fn=cmd_export_org)
     rp = sub.add_parser("restore", help="restore a backup (stop the app first)")
     rp.add_argument("path")
     rp.set_defaults(fn=cmd_restore)
