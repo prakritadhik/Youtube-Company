@@ -20,11 +20,11 @@ from tests.helpers import verified_task
 BDAY, MED = "happy-birthday-songs", "medicine-information"
 
 
-def make_ready_video(db, agent, channel=BDAY):
+def make_ready_video(db, agent, channel=BDAY, title="Sunny Day Song"):
     """A video with every precondition satisfied, built through the real controls."""
     pm = agent("production-manager")
-    v = videos.create(db, pm, channel, "Sunny Day Song")
-    v.title = "Happy Birthday Sunny Day Song"
+    v = videos.create(db, pm, channel, title)
+    v.title = f"Happy Birthday {title}"
     v.metadata_json = {"description": "An original birthday song."}
     if channel == MED:
         scripts.add_source(db, pm, v.id, url="https://www.cdc.gov/aspirin", title="CDC aspirin", publisher="CDC", retrieved_at=utcnow() - timedelta(hours=1),

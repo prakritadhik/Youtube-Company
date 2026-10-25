@@ -202,3 +202,21 @@ export interface YtUpload {
   created_by: string; created_at: string; is_test: boolean; request: { title: string; made_for_kids: boolean; category_id: string };
   verification: { outcome?: string; checks?: { check: string; ok: boolean; expected: unknown; actual: unknown }[]; processing?: string | null; failure_reason?: string | null };
 }
+
+// --- Phase 7: operations ----------------------------------------------------------------------------------------
+export interface OpsAlert {
+  id: number; key: string; severity: "info" | "warning" | "critical"; title: string; detail: string; source: string; status: string; count: number;
+  first_seen: string; last_seen: string; acknowledged_by: string | null; acknowledged_at: string | null;
+}
+export interface OpsSchedule {
+  slug: string; title: string; description: string; cadence: { kind: string; every_minutes?: number; at?: string; days?: number[] }; enabled: boolean;
+  catch_up: string; task_type: string; last_slot: string | null; last_run_at: string | null; last_task_id: number | null; next_run: string | null; due_now: boolean; timezone: string;
+}
+export interface CyclePhase { phase: string; status: string; summary: string; [k: string]: unknown }
+export interface OpsStatus {
+  worker: { alive: boolean; note: string; workers: { worker_id: string; host: string; pid: number; started_at: string; last_beat: string; seconds_since_beat: number; alive: boolean }[] };
+  schedules: OpsSchedule[]; alerts: OpsAlert[]; alert_counts: { critical: number; warning: number; info: number; open: number };
+  health: null | { checked_at: string; checks: { id: string; name: string; status: "ok" | "warn" | "fail"; detail: string }[] };
+  daily_cycle: null | { ran_at: string; timezone: string; quiet: boolean; needs_attention: number; phases: CyclePhase[]; note?: string };
+  timezone: string; operating_mode: string; notes: string[];
+}

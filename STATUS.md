@@ -4,8 +4,8 @@ _Last updated: 2026-10-25 · Branch `claude/sweet-hamilton-hvxkym`_
 
 ## Summary
 
-**Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging) and 4 (YouTube integration, mock-tested
-only) are built and tested.** Phases 5–7 are not started. The system can assemble, check and rights-screen a real video from local assets, plan content
+**Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging) 4 (YouTube integration, mock-tested
+only) and **7 (scheduler, daily cycle, alerts, health)** are built and tested.** Phases 5 and 6 are not started. The system can assemble, check and rights-screen a real video from local assets, plan content
 per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts. It does **not** yet call
 any AI provider, and it has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
 anything, and it is not autonomous. The soundtrack is an instrumental with
@@ -20,7 +20,7 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 | 4 YouTube integration | 🟨 built, **mock-tested only** | Sign-in, identity confirmation, resumable upload, thumbnail, scheduling, read-back verification, quota ledger; needs your OAuth client and a first real run (docs/YOUTUBE.md) |
 | 5 Analytics and community | ⬜ not started | Depends on 4 |
 | 6 Management and improvement | 🟨 foundation only | Reporting chain, board, acknowledgements exist as deterministic code; no LLM narrative, no experiments module |
-| 7 Controlled autonomy | 🟨 foundation only | Persistent queue, leases, retry, recovery, pause, backup exist; no scheduler / daily cycle / alerting |
+| 7 Controlled autonomy | ✅ built and tested (restart-verified on Linux) | Persistent scheduler with catch-up, daily operating cycle, alerts, worker heartbeat, health checks, gated autonomous upload queueing; no e-mail/phone alerts; Windows run untested |
 
 ## Phase 1 acceptance criteria
 
@@ -63,6 +63,23 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 | Live demonstration | `python -m app.cli demo-production` now also approves a thumbnail concept and metadata (with three measured chapters on the 38 s demo) and still ends with only `DEMO_CONTENT` blocking |
 | In a browser | Content-plan page (propose → assess → approve → start production; a sung idea is *parked*, not approved) and the video page's packaging cards, including a low-contrast thumbnail concept refused with the measured ratio; no horizontal overflow at 390 px; smoke test passes on a fresh install |
 
+## Phase 7 acceptance criteria
+
+> A scheduled development workflow runs without requiring the owner to keep the AI chat open, and its tasks and reports survive application restarts.
+
+Verified with real processes by `python scripts/verify_restart.py` (a throwaway installation; the real API and worker):
+
+| Check | Result |
+|---|---|
+| The daily operating cycle fires by itself from its schedule, completes and leaves a verified executive report | PASS |
+| The launcher is stopped; three tasks queued and a week of missed slots simulated; after restart the tasks ran | PASS (3 of 3) |
+| The schedule ran its latest missed slot **once**, not once per missed day | PASS (one catch-up run) |
+| Reports and tasks recorded before the stop are intact; the audit hash chain verifies | PASS |
+
+Unit and API tests: scheduler arithmetic in the owner's time zone (including a daylight-saving change), idempotent slots, two workers,
+catch-up and skip policies, restart in-process, alert de-duplication and escalation, every health check, the daily cycle's phases and
+its autonomy limits (never an unlisted channel, never medicine, daily limit, any gate failure), pause stops the cycle.
+
 ## Phase 4 acceptance criteria
 
 > Complete a real integration test with an authorized account, **or clearly document which external configuration remains necessary.**
@@ -86,7 +103,7 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **548 passed** (about 75 s with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **601 passed** (about 80 s with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
 | Frontend typecheck (`tsc --noEmit`) and production build | pass (14 routes, including `/plan`, `/videos/[id]` and the YouTube cards) |
@@ -99,7 +116,8 @@ Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_sett
 `test_reports`, `test_gate_videos`, `test_finance_backup_runner`, `test_api`, `test_migrations_docs`, `test_config`,
 `test_production_core`, `test_render_qa`, `test_originality`, `test_pipeline`, `test_elevenlabs`, `test_api_production`, `test_demo`,
 `test_research_safety`, `test_research_ideas`, `test_research_seo`, `test_research_workflow`, `test_api_research`,
-`test_youtube_connection`, `test_youtube_upload`, `test_youtube_selftest`, `test_api_youtube`.
+`test_youtube_connection`, `test_youtube_upload`, `test_youtube_selftest`, `test_api_youtube`,
+`test_ops_scheduler`, `test_ops_health_cycle`, `test_api_ops`; `scripts/verify_restart.py` is the live check.
 Mocks are used only in tests (no provider is called anywhere); the ElevenLabs client has only ever run against a mock transport.
 
 ## Implemented (Phase 1)
@@ -136,6 +154,12 @@ outside the database, resumable upload with resume and no-duplicate guarantees, 
 quota ledger, an idempotent `youtube.upload` queue task evidenced by saved API responses, `youtube-status` and `youtube-selftest`
 commands, Settings and video-page cards. Details: [docs/YOUTUBE.md](docs/YOUTUBE.md).
 
+## Implemented (Phase 7)
+
+Persistent schedules with catch-up and skip policies, idempotent slots, owner time zone; the worker's heartbeat; alerts (de-duplicated,
+escalating, self-resolving); a hierarchy of health checks; the daily operating cycle; gated autonomous upload queueing; the Operations page
+and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 ## Not implemented / known limitations
 
 * **YouTube has never been contacted.** Everything in Phase 4 is tested against a mock of Google's documented behaviour. Unconfirmed
@@ -163,7 +187,8 @@ commands, Settings and video-page cards. Details: [docs/YOUTUBE.md](docs/YOUTUBE
 * The platform limits used by the metadata checks are *reported* values; Phase 4 confirms them against the live API.
 * **Windows scripts are untested on Windows** (`setup.ps1`, `start.bat`, etc.). The Python code is cross-platform
   but only exercised on Linux.
-* No scheduler or daily operating cycle; reports are generated on demand (button / CLI / queue task).
+* **Alerts are in the dashboard and CLI only.** No e-mail, SMS or phone notification is configured. A stopped worker is noticed by the dashboard (banner within two minutes) and not by anything outside it.
+* The scheduler runs inside the worker, so it only works while the launcher is running; there is no Windows service or Task Scheduler entry yet.
 * The reporting chain is deterministic. No language model writes narrative yet. Agent "intelligence" is not
   implemented: roles define permissions and duties; LLM-backed behaviour arrives with the provider adapters.
 * Revenue, views, retention, comments: **unavailable** (shown as such).

@@ -36,7 +36,10 @@ DEFAULTS: dict[str, Any] = {
         "comment_reply_policy": "draft_only",  # draft_only | auto_low_risk
         "autopublish_channels": [],  # channel slugs allowed to publish without per-video approval
         "max_publishes_per_day_per_channel": 0,
+        "default_privacy": "private",  # what an autonomous upload asks for; the owner decides when to trust "public"
     },
+    # The time zone schedules are read in ("08:30" means 08:30 here). The owner's own; change it if it is wrong.
+    "timezone": "Asia/Kathmandu",
     "emergency_pause": {"active": False, "since": None, "by": None, "reason": None},
     # provider id -> {"api_access_confirmed": bool, "commercial_use_confirmed": bool, "note": str, "confirmed_at": iso}
     "provider_attestations": {},
@@ -50,7 +53,7 @@ DEFAULTS: dict[str, Any] = {
 }
 
 # Settings that only the human owner may change. (Pausing is separately open to the CEO/system.)
-OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations", "youtube"}
+OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations", "youtube", "timezone"}
 
 _BUDGET_NUMERIC = {
     "daily_usd", "monthly_usd", "per_video_usd", "daily_model_requests", "daily_provider_requests",
@@ -95,13 +98,26 @@ def _validate(key: str, value: Any) -> Any:
     if key == "autonomy":
         if not isinstance(value, dict):
             raise SettingError("autonomy must be an object")
-        allowed = {"comment_reply_policy", "autopublish_channels", "max_publishes_per_day_per_channel"}
+        allowed = {"comment_reply_policy", "autopublish_channels", "max_publishes_per_day_per_channel", "default_privacy"}
         extra = set(value) - allowed
         if extra:
             raise SettingError(f"unknown autonomy field(s): {sorted(extra)}")
         if value.get("comment_reply_policy", "draft_only") not in ("draft_only", "auto_low_risk"):
             raise SettingError("comment_reply_policy must be draft_only or auto_low_risk")
+        if value.get("default_privacy", "private") not in ("private", "unlisted", "public"):
+            raise SettingError("default_privacy must be private, unlisted or public")
+        n = value.get("max_publishes_per_day_per_channel", 0)
+        if isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= 20:
+            raise SettingError("max_publishes_per_day_per_channel must be a whole number from 0 to 20")
         return value
+    if key == "timezone":
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(str(value))
+        except (ZoneInfoNotFoundError, ValueError, OSError) as e:
+            raise SettingError(f"unknown time zone {value!r}; use a name like Asia/Kathmandu") from e
+        return str(value)
     if key == "youtube":
         if not isinstance(value, dict) or set(value) - {"daily_quota_units", "costs", "chunk_mb"}:
             raise SettingError("youtube settings are daily_quota_units, costs and chunk_mb")

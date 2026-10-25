@@ -17,12 +17,14 @@ from app.api import (
     routes_control,
     routes_diagnostics,
     routes_executive,
+    routes_ops,
     routes_production,
     routes_research,
     routes_youtube,
 )
 from app.api.ratelimit import RateLimiter
 from app.config import get_settings
+from app.ops import schedule as schedule_svc
 from app.research import ideas as ideas_svc
 from app.research import notes as notes_svc
 from app.research import seo as seo_svc
@@ -87,7 +89,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
     for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router,
-              routes_research.router, routes_youtube.router):
+              routes_research.router, routes_youtube.router, routes_ops.router):
         app.include_router(r)
 
     @app.get("/api/health", tags=["system"])
@@ -124,6 +126,7 @@ def create_app() -> FastAPI:
         (control.ExternalActionBlocked, 409), (ideas_svc.IdeaError, 409), (notes_svc.ResearchError, 422), (seo_svc.SeoError, 409),
         (thumbs_svc.ThumbError, 409),
         (conn_svc.YouTubeError, 409), (upload_svc.UploadError, 409), (quota_svc.QuotaExceeded, 409),
+        (schedule_svc.ScheduleError, 409),
     ):
         app.add_exception_handler(exc_type, err(code))
     app.add_exception_handler(Exception, unexpected)

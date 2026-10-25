@@ -17,6 +17,7 @@ const NAV: { href: string; label: string; icon: string; perm?: string }[] = [
   { href: "/organization", label: "Organization", icon: "⌘" },
   { href: "/board", label: "Intelligence Board", icon: "▤" },
   { href: "/approvals", label: "Approvals", icon: "✓" },
+  { href: "/operations", label: "Operations", icon: "◔" },
   { href: "/rights", label: "Originality & Rights", icon: "©" },
   { href: "/reports", label: "Executive Reports", icon: "≡" },
   { href: "/settings", label: "Settings & Control", icon: "⚙", perm: "settings:read" },
@@ -34,6 +35,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const { data: ctl, reload: reloadControl } = useApi<ControlStatus>(authenticated ? "/api/control/status" : null, { refreshMs: 15000 });
+  const { data: ops } = useApi<{ alerts: { critical: number; warning: number; info: number; open: number }; worker_alive: boolean }>(authenticated ? "/api/ops/summary" : null, { refreshMs: 30000 });
 
   // Pause/resume must be reflected immediately, not on the next poll.
   useEffect(() => {
@@ -71,6 +73,10 @@ export function Shell({ children }: { children: ReactNode }) {
             <Link key={n.href} href={n.href} aria-current={isActive(n.href) ? "page" : undefined}
               className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${isActive(n.href) ? "bg-accent-soft font-medium text-accent" : "text-ink/80 hover:bg-surface2"}`}>
               <span aria-hidden className="w-5 text-center">{n.icon}</span>{n.label}
+              {n.href === "/operations" && ops && ops.alerts.open > 0 && (
+                <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${ops.alerts.critical ? "bg-danger-soft text-danger" : ops.alerts.warning ? "bg-warn-soft text-warn" : "bg-surface2 text-muted"}`}
+                  aria-label={`${ops.alerts.open} open alerts`}>{ops.alerts.open}</span>
+              )}
             </Link>
           ))}
         </nav>
@@ -87,6 +93,11 @@ export function Shell({ children }: { children: ReactNode }) {
             <strong>Emergency pause is active.</strong> No new work, paid generation, uploads or replies are starting.
             {ctl?.emergency_pause.reason && <> Reason: {ctl.emergency_pause.reason}.</>}
             {ctl?.emergency_pause.since && <> Since {fmtDate(ctl.emergency_pause.since)}.</>}
+          </div>
+        )}
+        {ops && !ops.worker_alive && (
+          <div className="border-b border-warn/30 bg-warn-soft px-6 py-2 text-sm text-warn" role="status">
+            The background worker is not running, so queued and scheduled work is waiting. Start everything with <code>python launcher.py</code>.
           </div>
         )}
         {ctl && !paused && ctl.operating_mode === "DEVELOPMENT" && (

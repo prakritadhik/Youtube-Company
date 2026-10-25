@@ -19,7 +19,6 @@ from typing import Any
 from app.config import get_settings
 from app.db import session_scope
 from app.models.org import Channel
-from app.models.tasks import Task
 from app.providers.base import ProviderUnavailable
 from app.security.permissions import Actor
 from app.services import approvals, control, finance, tasks
@@ -84,6 +83,7 @@ class TaskContext:
 
 
 Handler = Callable[[TaskContext], HandlerResult]
+HOUSEKEEPING_SECONDS = 15  # heartbeat and scheduler tick; the stale-worker threshold is two minutes
 HANDLERS: dict[str, Handler] = {}
 
 
@@ -145,27 +145,33 @@ class Runner:
                              output_refs=out.output_refs, evidence_specs=out.evidence,
                              actual_cost_micro_usd=out.actual_cost_micro_usd)
 
+    def housekeeping(self, *, started: bool = False, now: datetime | None = None) -> list[str]:
+        """Beat the heartbeat and let the scheduler create any tasks that are due. Never raises: the loop must keep running."""
+        from app.ops import health, schedule
+
+        try:
+            with session_scope() as db:
+                health.beat(db, self.worker_id, started=started)
+                return schedule.tick(db, now)
+        except Exception:  # noqa: BLE001 - a failing scheduler must not stop the queue, and the failure is logged
+            log.exception("housekeeping failed")
+            return []
+
     def run_forever(self, stop: threading.Event | None = None) -> None:
         stop = stop or threading.Event()
         poll = get_settings().worker_poll_seconds
         log.info("worker %s started (poll %.1fs)", self.worker_id, poll)
+        self.housekeeping(started=True)
+        last_housekeeping = time.monotonic()
         while not stop.is_set():
             try:
                 ran = self.run_once()
             except Exception:  # noqa: BLE001 - keep the loop alive; the error is logged
                 log.exception("runner loop error")
                 ran = None
+            if time.monotonic() - last_housekeeping >= HOUSEKEEPING_SECONDS:
+                self.housekeeping()
+                last_housekeeping = time.monotonic()
             if ran is None:
                 stop.wait(poll)
         log.info("worker %s stopped", self.worker_id)
-
-
-def pending_count() -> int:
-    with session_scope(write=False) as db:
-        from sqlalchemy import func, select
-
-        return db.scalar(select(func.count()).select_from(Task).where(Task.status.in_(tasks.CLAIMABLE))) or 0
-
-
-def _sleep(seconds: float) -> None:  # indirection so tests can avoid real sleeping
-    time.sleep(seconds)

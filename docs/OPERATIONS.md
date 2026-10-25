@@ -56,6 +56,37 @@ quota; a video's page has *Queue upload* (private first), the read-back evidence
 youtube-status` prints the same offline. **Back up `data/secrets/token.key` along with `data/backups/`**; the key is deliberately not in
 the database backup. After a restore on a new machine without the key, reconnect each channel.
 
+## The scheduler, the daily cycle and alerts (Phase 7)
+
+`python launcher.py` starts the API, the **worker** and the dashboard. The worker also runs the scheduler: every 15 seconds it records a
+heartbeat and creates tasks for any schedule whose time has come. Nothing needs a browser or an AI chat to stay open; it needs the
+computer on and the launcher running.
+
+| Schedule (default) | What it does |
+|---|---|
+| Health check, hourly | Database integrity, audit-log chain, disk, FFmpeg, worker heartbeat, stuck and blocked tasks, backups, overdue approvals and schedules, YouTube connections and quota, the token key, pause state. Failing checks raise alerts; passing checks clear them |
+| Daily operating cycle, 07:30 | Review, research (re-assess ideas whose assessment is over a day old), planning (what waits for your decision), production (manual steps and blocked tasks), quality (open corrections), publishing, monitoring and learning (both *unavailable* for now, and it says so), then the CEO's verified executive report. A quiet day is reported as quiet |
+| Database backup, 02:00 | A verified SQLite backup |
+
+Times are read in your time zone (Settings → `timezone`, default `Asia/Kathmandu`). **If the app was off**, a schedule runs its most recent
+missed slot once, never every missed one; a new or re-enabled schedule does not owe slots from before it existed. Each slot creates at most
+one task (the slot is part of the task's idempotency key), so two workers or a crash cannot run it twice. Change times, turn schedules off, or
+*Run now* on the **Operations** page (owner only).
+
+**What the cycle may do by itself** is deliberately small. In *Controlled autonomy* only, for channels you listed, inside your daily
+limit, with every publication-gate condition satisfied (medical review, rights, approved metadata ...) it queues an upload with the privacy
+you set (default `private`). It cannot approve, publish medicine, spend money or bypass a gate. In any other mode it only lists cleared
+videos that wait for you.
+
+**Alerts** show on the Operations page and as a badge on every page. There is **no e-mail or phone notification**: none is configured. The same
+problem is one alert with a count; it clears itself when the check passes; acknowledging says you have seen it and it re-opens if it
+gets worse. `python -m app.cli ops-status` prints the worker, schedules and alerts without the dashboard. If the **worker stops**, the
+dashboard shows a banner within two minutes (a dead worker cannot raise its own alert).
+
+**Prove it on your computer:** `python scripts/verify_restart.py` builds a throwaway installation, starts the real API and worker, lets the
+daily cycle fire by itself, stops everything, simulates a week of missed slots and queued work, restarts, and checks that the work ran, the
+cycle ran exactly once more, earlier reports and tasks are intact and the audit chain verifies. (Linux-tested; not yet run on Windows.)
+
 ## Emergency pause
 
 Overview → **Emergency pause** (reason required). Immediately:

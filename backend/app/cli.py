@@ -38,9 +38,13 @@ def cmd_migrate(_: argparse.Namespace) -> int:
 def cmd_seed(_: argparse.Namespace) -> int:
     from app.agents.seed import seed_organization
     from app.db import session_scope
+    from app.ops import schedule
 
     with session_scope() as db:
         print("Seeded:", seed_organization(db))
+        made = schedule.seed_defaults(db)
+        if made:
+            print("Schedules created:", ", ".join(made))
     return 0
 
 
@@ -204,6 +208,25 @@ def cmd_demo_production(args: argparse.Namespace) -> int:
     return 0 if res["qa"]["passed"] else 1
 
 
+def cmd_ops_status(_: argparse.Namespace) -> int:
+    from app.db import session_scope
+    from app.ops import alerts, health, schedule
+    from app.services import registry
+
+    registry.load()
+    with session_scope(write=False) as db:
+        w = health.worker_status(db)
+        print(f"Worker: {'running' if w['alive'] else 'NOT RUNNING'}" + "".join(f"  [{x['worker_id']} beat {x['seconds_since_beat']}s ago]" for x in w["workers"][:3]))
+        for s in db.scalars(select(schedule.Schedule).order_by(schedule.Schedule.id)):
+            v = schedule.serialize(db, s)
+            print(f"  {v['slug']:<14} {'on ' if v['enabled'] else 'OFF'} next {v['next_run'] or '-'}{'  (DUE NOW)' if v['due_now'] else ''}")
+        open_ = alerts.list_alerts(db)
+        print(f"Alerts: {len(open_)} open")
+        for a in open_[:20]:
+            print(f"  [{a.severity}] {a.title}  (x{a.count}, {a.status.lower()})")
+    return 0
+
+
 def cmd_youtube_status(_: argparse.Namespace) -> int:
     from app.db import session_scope
     from app.services import registry
@@ -292,6 +315,7 @@ def main(argv: list[str] | None = None) -> int:
     dp.add_argument("--height", type=int, default=720)
     dp.add_argument("--preset", default="veryfast", help="x264 speed preset (ultrafast … slow)")
     dp.set_defaults(fn=cmd_demo_production)
+    sub.add_parser("ops-status", help="worker, schedules and open alerts").set_defaults(fn=cmd_ops_status)
     ys = sub.add_parser("youtube-status", help="show YouTube connections and today's quota use")
     ys.set_defaults(fn=cmd_youtube_status)
     yt_ = sub.add_parser("youtube-selftest", help="upload a tiny PRIVATE test video to a connected channel, read it back, then delete it")

@@ -48,7 +48,7 @@ const problems = [];
     ["/channels/medicine-information", "Medicine Information"], ["/channels/ai-story-videos", "AI Story Videos"],
     ["/organization", "Organization"], ["/board", "Company Intelligence Board"], ["/approvals", "Approval Center"],
     ["/rights", "Originality & Rights"], ["/reports", "Executive reports"], ["/settings", "Settings & control"],
-    ["/diagnostics", "Diagnostics"], ["/plan", "Content plan"],
+    ["/diagnostics", "Diagnostics"], ["/plan", "Content plan"], ["/operations", "Operations"],
   ];
   for (const [path, heading] of pages) {
     await page.goto(BASE + path);
