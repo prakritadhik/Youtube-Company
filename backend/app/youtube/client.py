@@ -34,6 +34,11 @@ UPLOAD_API = "https://www.googleapis.com/upload/youtube/v3"
 SCOPE_UPLOAD = "https://www.googleapis.com/auth/youtube.upload"
 SCOPE_READONLY = "https://www.googleapis.com/auth/youtube.readonly"
 PHASE4_SCOPES = (SCOPE_UPLOAD, SCOPE_READONLY)
+SCOPE_ANALYTICS = "https://www.googleapis.com/auth/yt-analytics.readonly"
+SCOPE_COMMENTS = "https://www.googleapis.com/auth/youtube.force-ssl"  # read comments and post replies
+ANALYTICS_API = "https://youtubeanalytics.googleapis.com/v2"
+# Permissions are requested in groups, only when the feature that needs them is switched on (incremental authorisation).
+SCOPE_GROUPS = {"analytics": (SCOPE_ANALYTICS,), "comments": (SCOPE_COMMENTS,)}
 
 CHUNK_MULTIPLE = 256 * 1024  # resumable uploads must send chunks in multiples of 256 KiB (except the last)
 MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024
@@ -157,6 +162,36 @@ class YouTubeClient:
 
     def videos_list(self, video_id: str) -> dict[str, Any]:
         return self._json("GET", f"{API}/videos", params={"part": "snippet,status,processingDetails,contentDetails", "id": video_id})
+
+    def video_statistics(self, ids: list[str]) -> dict[str, Any]:
+        """Cumulative counts as of now (``videos.list`` part=statistics), up to 50 ids per call."""
+        return self._json("GET", f"{API}/videos", params={"part": "statistics,status", "id": ",".join(ids[:50])})
+
+    def analytics_report(self, *, start: str, end: str, metrics: str, dimensions: str | None = None, filters: str | None = None,
+                         sort: str | None = None, max_results: int | None = None) -> dict[str, Any]:
+        """One YouTube Analytics report for the signed-in channel. Dates are YYYY-MM-DD."""
+        params = {"ids": "channel==MINE", "startDate": start, "endDate": end, "metrics": metrics}
+        for k, v in (("dimensions", dimensions), ("filters", filters), ("sort", sort), ("maxResults", max_results)):
+            if v is not None:
+                params[k] = str(v)
+        return self._json("GET", f"{ANALYTICS_API}/reports", params=params)
+
+    def comment_threads(self, video_id: str, *, page_token: str | None = None, max_results: int = 100) -> dict[str, Any]:
+        params = {"part": "snippet,replies", "videoId": video_id, "maxResults": str(max_results), "order": "time", "textFormat": "plainText"}
+        if page_token:
+            params["pageToken"] = page_token
+        return self._json("GET", f"{API}/commentThreads", params=params)
+
+    def comment_reply(self, parent_id: str, text: str) -> dict[str, Any]:
+        """Post a reply to a top-level comment (``comments.insert``). Irreversible from here: the caller records intent first."""
+        return self._json("POST", f"{API}/comments", params={"part": "snippet"}, json={"snippet": {"parentId": parent_id, "textOriginal": text}})
+
+    def comment_replies(self, parent_id: str) -> dict[str, Any]:
+        """Replies already posted under one top-level comment (``comments.list?parentId=``); used to avoid ever posting the same reply twice."""
+        return self._json("GET", f"{API}/comments", params={"part": "snippet", "parentId": parent_id, "maxResults": "100", "textFormat": "plainText"})
+
+    def comment_get(self, comment_id: str) -> dict[str, Any]:
+        return self._json("GET", f"{API}/comments", params={"part": "snippet", "id": comment_id, "textFormat": "plainText"})
 
     def videos_delete(self, video_id: str) -> None:
         try:

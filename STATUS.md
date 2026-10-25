@@ -4,8 +4,9 @@ _Last updated: 2026-10-25 · Branch `claude/sweet-hamilton-hvxkym`_
 
 ## Summary
 
-**Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging) 4 (YouTube integration, mock-tested
-only) and **7 (scheduler, daily cycle, alerts, health)** are built and tested.** Phases 5 and 6 are not started. The system can assemble, check and rights-screen a real video from local assets, plan content
+**Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging), 4 (YouTube integration, mock-tested
+only), 5 (performance data and comments, mock-tested only) and 7 (scheduler, daily cycle, alerts, health)** are built and tested. Phase 6 is only
+a foundation. The system can assemble, check and rights-screen a real video from local assets, plan content
 per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts. It does **not** yet call
 any AI provider, and it has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
 anything, and it is not autonomous. The soundtrack is an instrumental with
@@ -18,7 +19,7 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 | 2 Real video production | ✅ built and tested (local assets) | One validated demo video produced; sung music, AI art and LLM drafting need providers (see "Needs you") |
 | 3 Research and SEO | ✅ built and tested (no data source / language model) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
 | 4 YouTube integration | 🟨 built, **mock-tested only** | Sign-in, identity confirmation, resumable upload, thumbnail, scheduling, read-back verification, quota ledger; needs your OAuth client and a first real run (docs/YOUTUBE.md) |
-| 5 Analytics and community | ⬜ not started | Depends on 4 |
+| 5 Analytics and community | 🟨 built, **mock-tested only** | Daily collection of totals, daily figures and retention with source and time; unavailable figures carry YouTube's reason, never zero; comment retrieval with fixed English-only rules (`rules-v1`); template thank-yous for plain praise only; owner-approved replies, read back; Performance and Comments pages. Needs the Phase 4 Google setup plus the analytics and comments permissions (docs/ANALYTICS.md) |
 | 6 Management and improvement | 🟨 foundation only | Reporting chain, board, acknowledgements exist as deterministic code; no LLM narrative, no experiments module |
 | 7 Controlled autonomy | ✅ built and tested (restart-verified on Linux) | Persistent scheduler with catch-up, daily operating cycle, alerts, worker heartbeat, health checks, gated autonomous upload queueing; no e-mail/phone alerts; Windows run untested |
 
@@ -80,6 +81,25 @@ Unit and API tests: scheduler arithmetic in the owner's time zone (including a d
 catch-up and skip policies, restart in-process, alert de-duplication and escalation, every health check, the daily cycle's phases and
 its autonomy limits (never an unlisted channel, never medicine, daily limit, any gate failure), pause stops the cycle.
 
+## Phase 5 acceptance criteria
+
+> The dashboard displays actual retrieved data and clearly labels unavailable metrics.
+
+Met **for data retrieved from a mock of Google's documented API**. No real YouTube data has ever been retrieved, so "actual" here means "whatever the
+API returns when it is run", and the first real collection is the live test (docs/ANALYTICS.md lists what it confirms). What was verified:
+
+| Behaviour | Evidence |
+|---|---|
+| Totals, daily figures and retention stored with source, retrieval time and the saved raw response; recollecting updates in place | `test_analytics_collect.py` (15) |
+| A figure YouTube refuses, has no rows for, or returns as null has **no row** and a recorded reason; the dashboard shows `unavailable` plus the reason, and revenue is always unavailable | same; `test_api_community.py`; seen in a browser on seeded data |
+| Without the analytics permission nothing is requested, and the gap says where to switch it on; asking for extra permission is a separate sign-in, keeps the confirmed channel, saves nothing if Google grants less | `test_youtube_permissions.py` |
+| Retention described by measured marks and the steepest loss; too few points is *unavailable*; no claim about why viewers left | `test_analytics_retention.py` (8) |
+| Comments stored cleaned and quoted, flagged when they try to give instructions, sorted by `rules-v1`; safety, copyright, medical and personal-data comments are never given a reply; non-English text is marked for a person | `test_community_triage.py` (26), `test_community_comments.py` (7) |
+| Replies: owner approves the exact text; hash re-checked at send; development mode, pause, missing permission, quota and a changed policy each park the reply; a lost answer never produces a second reply; success only from a read-back; automatic thank-yous only under every condition | `test_community_replies.py` (25); nine deliberate code mutations across replies, triage and collection: eight made a test fail at once, and the ninth (a missing value stored as zero) survived until a test for null values was added |
+| CEO verification: department reports carry re-runnable counts (connections, figures retrieved, figures unavailable, comments, escalations, drafts, replies posted); an inflated claim is contradicted; "YouTube not connected" is replaced once a channel is connected | `test_community_reporting.py` (5) |
+| The daily cycle's monitoring phase reports what was collected and what waits for a person (and counts it as needing you) | same |
+| In a browser (seeded with mock-Google data): Performance, Comments and Settings render; 390 px width no overflow; no console errors; smoke test passes on a fresh install | Playwright runs |
+
 ## Phase 4 acceptance criteria
 
 > Complete a real integration test with an authorized account, **or clearly document which external configuration remains necessary.**
@@ -103,11 +123,11 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **601 passed** (about 80 s with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **701 passed** (about 90 s with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
-| Frontend typecheck (`tsc --noEmit`) and production build | pass (14 routes, including `/plan`, `/videos/[id]` and the YouTube cards) |
-| Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 11 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
+| Frontend typecheck (`tsc --noEmit`) and production build | pass (16 routes, including `/performance` and `/comments`) |
+| Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 15 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
 | Live concurrency stress (API + worker + 3rd process) | 150 concurrent writes, 60 tasks, 80 reads: 0 errors, audit chain intact over 352 events |
 | Video page in a real browser (demo data) | player, lyrics, rights report, 19 QA rows, provenance table render; no horizontal overflow, no console errors |
 | Clean-clone install via `scripts/setup.sh` | see "Install verification" below (verified at the end of Phase 1; not repeated for Phase 2) |
@@ -154,6 +174,13 @@ outside the database, resumable upload with resume and no-duplicate guarantees, 
 quota ledger, an idempotent `youtube.upload` queue task evidenced by saved API responses, `youtube-status` and `youtube-selftest`
 commands, Settings and video-page cards. Details: [docs/YOUTUBE.md](docs/YOUTUBE.md).
 
+## Implemented (Phase 5)
+
+Metric, gap, retention, comment and reply-draft records (migration 0006); incremental Google permissions (analytics, comments); collection of totals, daily
+figures and retention; retention analysis; comment retrieval and `rules-v1` triage; template thank-yous for praise only; approval-gated, read-back-verified
+replies with an optional strict auto-policy; scheduled `analytics.collect` and `community.collect_comments`; department-report claims for analytics and community;
+the monitoring phase of the daily cycle; Performance and Comments pages and Settings controls. Details: [docs/ANALYTICS.md](docs/ANALYTICS.md).
+
 ## Implemented (Phase 7)
 
 Persistent schedules with catch-up and skip policies, idempotent slots, owner time zone; the worker's heartbeat; alerts (de-duplicated,
@@ -165,7 +192,9 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 * **YouTube has never been contacted.** Everything in Phase 4 is tested against a mock of Google's documented behaviour. Unconfirmed
   until your first real run: that the resumable-upload and thumbnail calls match the live API, the real quota costs, whether public
   uploads stay public (an unverified API project is *reported* to have them locked private), whether tokens last, and the loopback
-  redirect. No analytics, comments, post-upload metadata edits, playlists or deletes (other than the self-test's own video).
+  redirect. The same applies to Phase 5: the Analytics request shape, which figures a channel is offered (impressions, click-through rate), whether the
+  YouTube Analytics API must be enabled separately, comment reading and replying under `youtube.force-ssl`, and Analytics quota behaviour are all unconfirmed
+  (docs/ANALYTICS.md). No post-upload metadata edits, playlists or deletes (other than the self-test's own video).
 * **No other provider has been run live either.** The ElevenLabs text-to-speech client exists but was written from public API
   knowledge and tested against a mock transport only (`verified_live` stays false). There is **no** adapter for ElevenLabs
   music (request format not verified), a language model, image/video generation, Canva or YouTube. `docs/PROVIDERS.md`
@@ -191,7 +220,9 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 * The scheduler runs inside the worker, so it only works while the launcher is running; there is no Windows service or Task Scheduler entry yet.
 * The reporting chain is deterministic. No language model writes narrative yet. Agent "intelligence" is not
   implemented: roles define permissions and duties; LLM-backed behaviour arrives with the provider adapters.
-* Revenue, views, retention, comments: **unavailable** (shown as such).
+* **Revenue is never collected** (shown as unavailable). Demographics, traffic sources and competitor figures are not collected. Comment sorting is fixed rules,
+  English only and blunt; there is no language-model sentiment or reply wording, and a comment edited or deleted on YouTube after collection is not tracked.
+  No moderation action (hide, report, ban) exists; a reply is the only write.
 * PostgreSQL is a configuration change in principle but has not been run.
 * Artifacts are not included in database backups (copy `data/` for a full backup).
 
@@ -210,8 +241,11 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 4. **Phase 4 (blocks every real upload):** the Google Cloud setup in [docs/YOUTUBE.md](docs/YOUTUBE.md): project, YouTube Data API, consent
    screen, a Desktop OAuth client in `.env`, your confirmation of the API terms, signing in to each channel and answering whether it is made
    for kids, Approval-first mode, then `youtube-selftest`.
-5. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
-6. A named human reviewer process for medicine videos (today: you).
+5. **Phase 5 (performance data and comments):** also enable *YouTube Analytics API* in the same Google Cloud project, then press *Allow* next to
+   *Performance data* and *Comments* for each channel in Settings → YouTube, and run *Collect performance now* once. If you want automatic thank-yous, choose
+   that policy in Settings → Autonomy (Controlled autonomy, listed non-medicine channels only). Tell me what the first collection reports as unavailable.
+6. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
+7. A named human reviewer process for medicine videos (today: you).
 
 ## Install verification
 

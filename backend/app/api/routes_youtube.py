@@ -30,6 +30,10 @@ class ConfirmIn(BaseModel):
     category_id: str | None = Field(default=None, max_length=4)
 
 
+class ConnectIn(BaseModel):
+    groups: list[str] = Field(default_factory=list, max_length=4)  # extra permissions to ask Google for: "analytics", "comments"
+
+
 class UploadIn(BaseModel):
     privacy: str = Field(default="private", max_length=10)
     publish_at: datetime | None = None
@@ -51,10 +55,10 @@ def youtube_status(db: Session = Depends(get_db), auth: Auth = Depends(require(P
 
 
 @router.post("/youtube/{channel}/connect")
-def connect(channel: str, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def connect(channel: str, body: ConnectIn | None = None, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     s = get_settings()
     # localhost (not 127.0.0.1): the browser's session cookie belongs to the host name the dashboard was opened with
-    return {"url": conn_svc.begin(db, auth.actor, channel, f"http://localhost:{s.port}")}
+    return {"url": conn_svc.begin(db, auth.actor, channel, f"http://localhost:{s.port}", tuple(body.groups) if body else ())}
 
 
 @router.get("/youtube/callback")

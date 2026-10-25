@@ -19,7 +19,7 @@ function ChannelRow({ slug, name, c, status, onChanged }: { slug: string; name: 
     setBusy(key); setErr(null);
     try { await fn(); onChanged(); } catch (e) { setErr(e as Error); } finally { setBusy(null); }
   };
-  const connect = () => act("connect", async () => { const r = await api<{ url: string }>(`/api/youtube/${slug}/connect`, { method: "POST", body: {} }); window.location.href = r.url; });
+  const connect = (key = "connect", groups: string[] = []) => act(key, async () => { const r = await api<{ url: string }>(`/api/youtube/${slug}/connect`, { method: "POST", body: { groups } }); window.location.href = r.url; });
   const confirm = () => act("confirm", async () => {
     await api(`/api/youtube/${slug}/confirm`, { method: "POST", body: { google_channel_id: c.google_channel_id, made_for_kids: kids === "yes", category_id: cat || null } });
   });
@@ -35,7 +35,7 @@ function ChannelRow({ slug, name, c, status, onChanged }: { slug: string; name: 
       {c.status === "NOT_CONNECTED" || c.status === "REVOKED" || c.status === "NEEDS_RECONNECT" ? (
         <div className="mt-3 space-y-2 text-sm">
           {c.last_error && <p className="text-danger">{c.last_error}</p>}
-          <Button variant="primary" busy={busy === "connect"} disabled={!status.oauth_client_configured} onClick={connect}>{c.status === "NOT_CONNECTED" ? "Connect to YouTube" : "Reconnect"}</Button>
+          <Button variant="primary" busy={busy === "connect"} disabled={!status.oauth_client_configured} onClick={() => connect()}>{c.status === "NOT_CONNECTED" ? "Connect to YouTube" : "Reconnect"}</Button>
           {!status.oauth_client_configured && <p className="text-muted">Create a Google OAuth client first (see docs/YOUTUBE.md) and put its ID and secret in <code>.env</code>.</p>}
         </div>
       ) : (
@@ -61,7 +61,21 @@ function ChannelRow({ slug, name, c, status, onChanged }: { slug: string; name: 
                 <Button busy={busy === "disconnect"} onClick={disconnect}>It&rsquo;s the wrong one</Button></div>
             </div>
           )}
-          {c.status === "CONNECTED" && <Button busy={busy === "disconnect"} onClick={disconnect}>Disconnect</Button>}
+          {c.status === "CONNECTED" && (
+            <div className="space-y-2">
+              <div className="rounded-xl bg-surface2 p-3">
+                <div className="font-medium">Extra permissions</div>
+                <p className="text-xs text-muted">Each is asked from Google only when you switch it on. You can remove them any time at myaccount.google.com/permissions.</p>
+                <ul className="mt-2 space-y-2">
+                  <li className="flex flex-wrap items-center justify-between gap-2"><span>Performance data (views, watch time, retention) <Badge tone={c.can_read_analytics ? "ok" : "neutral"}>{c.can_read_analytics ? "allowed" : "not allowed"}</Badge></span>
+                    {!c.can_read_analytics && <Button busy={busy === "analytics"} onClick={() => connect("analytics", ["analytics"])}>Allow</Button>}</li>
+                  <li className="flex flex-wrap items-center justify-between gap-2"><span>Comments (read, and post replies you approve) <Badge tone={c.can_manage_comments ? "ok" : "neutral"}>{c.can_manage_comments ? "allowed" : "not allowed"}</Badge></span>
+                    {!c.can_manage_comments && <Button busy={busy === "comments"} onClick={() => connect("comments", ["comments"])}>Allow</Button>}</li>
+                </ul>
+              </div>
+              <Button busy={busy === "disconnect"} onClick={disconnect}>Disconnect</Button>
+            </div>
+          )}
         </div>
       )}
     </li>
@@ -89,7 +103,7 @@ export function YouTubeSettingsCard() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const r = q.get("youtube");
-    if (r === "signed_in") setBanner({ tone: "ok", text: "Signed in. Check that the channel shown is the right one, answer the audience question, and confirm." });
+    if (r === "signed_in") setBanner({ tone: "ok", text: "Signed in. If the channel is waiting for confirmation, check that it is the right one, answer the audience question, and confirm." });
     else if (r === "error") setBanner({ tone: "danger", text: q.get("message") ?? "The sign-in did not complete." });
     if (r) window.history.replaceState({}, "", window.location.pathname);
   }, []);

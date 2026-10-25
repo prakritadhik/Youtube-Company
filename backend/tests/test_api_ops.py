@@ -22,7 +22,7 @@ def test_status_shows_a_stopped_worker_schedules_and_honest_notes(owner_client):
     seed()
     d = owner_client.get("/api/ops/status").json()
     assert d["worker"]["alive"] is False and d["timezone"] == "Asia/Kathmandu" and d["health"] is None and d["daily_cycle"] is None
-    assert {s["slug"] for s in d["schedules"]} == {"health-check", "daily-cycle", "backup"}
+    assert {s["slug"] for s in d["schedules"]} == {"health-check", "daily-cycle", "backup", "analytics-collect", "comments-collect"}
     assert all(s["next_run"] for s in d["schedules"]) and any("no e-mail" in n for n in d["notes"])
     assert owner_client.get("/api/ops/summary").json() == {"alerts": {"info": 0, "warning": 0, "critical": 0, "open": 0}, "worker_alive": False}
 

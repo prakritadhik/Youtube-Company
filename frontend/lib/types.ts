@@ -187,7 +187,7 @@ export interface Packaging {
 export interface YtConnection {
   status: string; google_channel_id?: string; google_channel_title?: string; google_channel_handle?: string | null; scopes?: string[];
   made_for_kids?: boolean | null; category_id?: string; category_name?: string | null; confirmed_by?: string | null; confirmed_at?: string | null;
-  last_error?: string | null;
+  last_error?: string | null; can_read_analytics?: boolean; can_manage_comments?: boolean;
 }
 export interface YtStatus {
   oauth_client_configured: boolean; live_verified: boolean; note: string; operating_mode: string;
@@ -219,4 +219,34 @@ export interface OpsStatus {
   health: null | { checked_at: string; checks: { id: string; name: string; status: "ok" | "warn" | "fail"; detail: string }[] };
   daily_cycle: null | { ran_at: string; timezone: string; quiet: boolean; needs_attention: number; phases: CyclePhase[]; note?: string };
   timezone: string; operating_mode: string; notes: string[];
+}
+
+// --- Phase 5: performance and comments --------------------------------------------------------------------------
+export interface PerfMetric {
+  metric: string; label: string; status: "available" | "unavailable"; source?: string; reason?: string; last_attempt?: string | null; retrieved_at?: string | null;
+  latest?: { day: string; value: number }; series?: { day: string; value: number }[]; total_in_window?: number;
+}
+export interface VideoPerformance {
+  video_id: number; title?: string; uploaded: boolean; youtube_video_id?: string; metrics: PerfMetric[]; caveat?: string;
+  retention: { ratio: number; audience_watch_ratio: number; relative: number | null }[];
+  retention_analysis: { status: "available"; points: number; statements: string[]; caveat: string } | { status: "unavailable"; reason: string };
+}
+export interface AnalyticsChannel {
+  channel: string; name: string; connection: YtConnection; uploaded_videos: number; last_collected: string | null; open_gaps: number;
+  total_views: { value: number; videos_counted: number; videos_uploaded: number } | { status: "unavailable"; reason: string };
+  comments_waiting: Record<string, number>; videos: { id: number; title: string; youtube_video_id: string }[];
+}
+export interface AnalyticsOverview { channels: AnalyticsChannel[]; revenue: { status: string; reason: string } }
+export interface ReplyDraftView {
+  id: number; comment_id: number; text: string; method: string; status: string; risk: string; approval_request_id: number | null; approved_by: string | null;
+  task_id: number | null; youtube_reply_id: string | null; error: string | null; created_by: string; created_at: string; sent_at: string | null;
+}
+export interface CommentRow {
+  id: number; video_id: number; video_title: string | null; channel: string | null; author: string; text: string; untrusted: true; like_count: number; published_at: string;
+  category: string; category_method: string; risk: "low" | "review" | "escalate"; reasons: string[]; injection_flags: string[]; status: string; is_reply: boolean; is_ours: boolean;
+  draft: ReplyDraftView | null;
+}
+export interface CommentsResponse {
+  comments: CommentRow[];
+  summary: { sentiment: { positive: number; negative: number; questions: number; needs_a_person: number; unclassified: number }; by_category: Record<string, number>; by_status: Record<string, number>; escalated_waiting: number; drafts_waiting: number; method: string };
 }

@@ -224,7 +224,8 @@ def test_the_research_manager_report_carries_verifiable_counts_and_flags_what_is
     assert next(c for t, c in claims.items() if "were approved" in t)["value"] == 1
     assert next(c for t, c in claims.items() if "were rejected" in t)["value"] == 1
     unavailable = [c for c in rep.content["claims"] if c["cls"] == "unavailable"]
-    assert len(unavailable) == 1 and unavailable[0]["check"] == {"type": "source_not_connected", "source": "youtube"}  # one statement, not two
+    # two distinct statements: YouTube performance data, and keyword/trend data that no source provides
+    assert [c["check"] for c in unavailable] == [{"type": "source_not_connected", "source": "youtube"}, {"type": "source_not_connected", "source": "keyword_data"}]
 
 
 def test_the_ceo_rechecks_research_claims_and_rejects_an_inflated_one(db, agent):

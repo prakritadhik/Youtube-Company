@@ -1,4 +1,4 @@
-# YouTube integration (Phase 4)
+# YouTube integration (Phase 4; analytics and comments are Phase 5, see [ANALYTICS.md](ANALYTICS.md))
 
 **Status in one line:** the integration is built and tested against a *mock of Google's documented behaviour*. It has **never
 talked to the real YouTube**, because that needs a Google Cloud OAuth client that only you can create. This page lists exactly what
@@ -7,9 +7,11 @@ you must do, and what your first real run will confirm or correct.
 ## What you need to do (once)
 
 1. **Google Cloud project.** Open <https://console.cloud.google.com/>, create a project (any name), and in *APIs & Services → Library*
-   enable **YouTube Data API v3**.
+   enable **YouTube Data API v3**. If you want performance data (Phase 5), also enable **YouTube Analytics API**
+   (*Reported* to be a separate API; not confirmed from the build environment).
 2. **OAuth consent screen.** *APIs & Services → OAuth consent screen*: user type **External**, app name, your e-mail. Add the Google
-   account(s) that manage your channels as **test users**. Under *Scopes* add `youtube.upload` and `youtube.readonly`.
+   account(s) that manage your channels as **test users**. Under *Scopes* add `youtube.upload` and `youtube.readonly`; for Phase 5 also `yt-analytics.readonly` and `youtube.force-ssl`
+   (the app asks Google for these only when you press *Allow* next to a feature in Settings).
    * **Reported, not confirmed:** while the consent screen's publishing status is *Testing*, Google expires refresh tokens after
      about 7 days. The app handles that: the channel turns to *Needs reconnect* and one click reconnects it. Moving the status to
      *In production* (an unverified personal app shows an "unverified app" warning screen) is reported to avoid the expiry. Check
@@ -93,7 +95,8 @@ settings, not constants. The Google Cloud console is the authority; the dashboar
 
 * Sign-in uses OAuth with **PKCE**, a single-use `state` (only a hash is stored) and a loopback redirect to this app
   (`http://localhost:8000/api/youtube/callback`, which Google allows for Desktop clients). It requests only `youtube.upload` and
-  `youtube.readonly`; analytics and comment permissions will be requested later, when those features exist.
+  `youtube.readonly` at first. Performance data (`yt-analytics.readonly`) and comments (`youtube.force-ssl`) are requested separately, only when you
+  press *Allow* for them; the revenue scope is never requested ([ANALYTICS.md](ANALYTICS.md)).
 * Refresh and access tokens and upload-session URLs are stored **encrypted** (Fernet). The key is `data/secrets/token.key`, outside the
   database and outside database backups. If you lose it, you reconnect; the app never silently creates a replacement for tokens that
   still exist. **Back up `data/secrets/` separately from `data/backups/`**, and keep both private (BitLocker helps).
@@ -103,7 +106,6 @@ settings, not constants. The Google Cloud console is the authority; the dashboar
 
 ## Not built (yet)
 
-* Analytics, retention and comments (Phase 5; they need extra permissions requested then).
 * Editing a video's metadata or thumbnail **after** upload through the app (`videos.update` is not implemented): change it in YouTube
   Studio, or abandon and re-upload.
 * Playlists, end screens, cards and other Studio-only features (not offered by the public API or not built).

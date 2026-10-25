@@ -52,6 +52,7 @@ class YouTubeAuthState(Base):
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"))
     verifier_enc: Mapped[str] = mapped_column(Text)
     redirect_uri: Mapped[str] = mapped_column(String(300))
+    scopes: Mapped[list[str]] = mapped_column(JSON, default=list)  # what this sign-in asked Google for
     created_by: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime)

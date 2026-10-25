@@ -13,18 +13,20 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, true
 from sqlalchemy.orm import Session
 
 from app.enums import ApprovalStatus, ClaimClass, ReportKind, TaskStatus
 from app.models.approvals import ApprovalRequest
 from app.models.board import BoardEntry
+from app.models.community import Comment, Metric, MetricGap, ReplyDraft
 from app.models.finance import UsageRecord
 from app.models.org import Agent, Department
 from app.models.reports import Report
 from app.models.research import ContentIdea, MetadataSet, ResearchNote, ThumbnailConcept
 from app.models.tasks import Evidence, Task
 from app.models.videos import Video
+from app.models.youtube import YouTubeConnection
 from app.security.permissions import Actor, P, PermissionDenied
 from app.services import audit, board, evidence, finance, org
 from app.services import settings as settings_svc
@@ -51,6 +53,11 @@ _ENTITIES: dict[str, tuple[Any, str]] = {  # entity → (model, default time col
     "research_notes": (ResearchNote, "created_at"),
     "metadata_sets": (MetadataSet, "created_at"),
     "thumbnail_concepts": (ThumbnailConcept, "created_at"),
+    "youtube_connections": (YouTubeConnection, "created_at"),
+    "metrics": (Metric, "retrieved_at"),
+    "metric_gaps": (MetricGap, "last_attempt"),
+    "comments": (Comment, "retrieved_at"),
+    "reply_drafts": (ReplyDraft, "created_at"),
 }
 
 
@@ -77,8 +84,12 @@ class CheckResult:
 
 
 def connected_sources(db: Session) -> set[str]:
-    """External data sources that are actually connected. Empty until the YouTube phase."""
-    return set()
+    """External data sources that are actually connected. ``youtube`` means at least one channel is connected and confirmed;
+    revenue, keyword and trend sources are never connected, so statements that they are unavailable stay true."""
+    out: set[str] = set()
+    if db.scalar(select(func.count()).select_from(YouTubeConnection).where(YouTubeConnection.status == "CONNECTED")):
+        out.add("youtube")
+    return out
 
 
 def _filters(model: Any, where: dict[str, Any], between: dict[str, Any] | None, default_time: str) -> list[Any]:
@@ -106,10 +117,10 @@ def run_check(db: Session, check: dict[str, Any] | None, verifier: Actor) -> Che
             model, default_time = _ENTITIES[check["entity"]]
             conds = _filters(model, check.get("where", {}), check.get("between"), default_time)
             if kind == "count":
-                actual: Any = db.scalar(select(func.count()).select_from(model).where(and_(*conds))) or 0
+                actual: Any = db.scalar(select(func.count()).select_from(model).where(and_(true(), *conds))) or 0
             else:
                 col = model.__table__.columns[check["column"]]
-                actual = int(db.scalar(select(func.coalesce(func.sum(col), 0)).where(and_(*conds))) or 0)
+                actual = int(db.scalar(select(func.coalesce(func.sum(col), 0)).where(and_(true(), *conds))) or 0)
             ok = actual == check["expected"]
             return CheckResult("confirmed" if ok else "contradicted", actual,
                                "matches the database" if ok else f"database says {actual}")
@@ -214,13 +225,22 @@ def build_department_report(
         Claim(f"{failed_n} task(s) are in FAILED state.", ClaimClass.VERIFIED_FACT, failed_n, failed_chk, "tasks table", who),
         Claim(f"{blocked_n} task(s) are BLOCKED.", ClaimClass.VERIFIED_FACT, blocked_n, blocked_chk, "tasks table", who),
         Claim(f"{waiting_n} task(s) are waiting for owner approval.", ClaimClass.VERIFIED_FACT, waiting_n, waiting_chk, "tasks table", who),
-        Claim("Channel performance metrics (views, watch time, retention, revenue) are unavailable: YouTube is not connected.",
-              ClaimClass.UNAVAILABLE, None, {"type": "source_not_connected", "source": "youtube"}, "integration status", who),
     ]
+    youtube_connected = "youtube" in connected_sources(db)
+    if youtube_connected:
+        claims.append(Claim("Revenue figures are unavailable: they are not collected (they need a separate monetisation permission and a monetised channel).",
+                            ClaimClass.UNAVAILABLE, None, {"type": "source_not_connected", "source": "youtube_revenue"}, "integration status", who))
+    else:
+        claims.append(Claim("Channel performance metrics (views, watch time, retention, revenue) are unavailable: YouTube is not connected.",
+                            ClaimClass.UNAVAILABLE, None, {"type": "source_not_connected", "source": "youtube"}, "integration status", who))
     if dept.slug == "research-growth":
         from app.research import reporting as research_reporting  # local import: it depends on this module
 
         claims.extend(research_reporting.claims(db, actor, start, end, who))
+    if dept.slug in ("analytics-improvement", "community"):
+        from app.analytics import reporting as analytics_reporting  # local import: it depends on this module
+
+        claims.extend(analytics_reporting.claims(db, actor, start, end, who, dept.slug))
     claims.extend(extra_claims or [])
 
     content = {
@@ -232,7 +252,8 @@ def build_department_report(
             {"task_id": t.id, "evidence": [{"id": e.id, "kind": e.kind, "status": e.verification_status}
                                            for e in evidence.for_task(db, t.id)]} for t in completed
         ],
-        "performance_metrics": {"status": "unavailable", "reason": "YouTube analytics are not connected yet."},
+        "performance_metrics": ({"status": "see_analytics_report", "reason": "Performance figures are collected from connected channels; the Analytics and Improvement report lists what arrived and what is unavailable."}
+                                if youtube_connected else {"status": "unavailable", "reason": "YouTube analytics are not connected yet."}),
         "problems_and_blockers": [
             {"task_id": t.id, "title": t.title, "status": t.status, "reason": t.blocked_reason or (t.error or {}).get("message")}
             for t in problems

@@ -80,7 +80,18 @@ def _hash(state: str) -> str:
 # --- 1. begin ---------------------------------------------------------------------------------------------------------------
 
 
-def begin(db: Session, actor: Actor, channel_slug: str, redirect_base: str) -> str:
+def scopes_for(groups: tuple[str, ...]) -> tuple[str, ...]:
+    bad = [g for g in groups if g not in yt.SCOPE_GROUPS]
+    if bad:
+        raise YouTubeError("BAD_PERMISSION", f"unknown permission group(s) {bad}; choose from {sorted(yt.SCOPE_GROUPS)}")
+    return tuple(dict.fromkeys((*yt.PHASE4_SCOPES, *(s for g in groups for s in yt.SCOPE_GROUPS[g]))))
+
+
+def has_group(conn: YouTubeConnection | None, group: str) -> bool:
+    return bool(conn and conn.status == "CONNECTED" and all(s in (conn.scopes or []) for s in yt.SCOPE_GROUPS[group]))
+
+
+def begin(db: Session, actor: Actor, channel_slug: str, redirect_base: str, groups: tuple[str, ...] = ()) -> str:
     actor.require(P.SETTINGS_WRITE)
     if not actor.is_owner:
         raise YouTubeError("OWNER_ONLY", "Only the owner can connect a YouTube channel.")
@@ -89,10 +100,11 @@ def begin(db: Session, actor: Actor, channel_slug: str, redirect_base: str) -> s
     verifier, challenge = yt.pkce_pair()
     state = secrets.token_urlsafe(32)
     redirect = redirect_base.rstrip("/") + "/api/youtube/callback"
-    db.add(YouTubeAuthState(state_hash=_hash(state), channel_id=ch.id, verifier_enc=TokenBox().encrypt(verifier), redirect_uri=redirect,
+    scopes = scopes_for(groups)
+    db.add(YouTubeAuthState(state_hash=_hash(state), channel_id=ch.id, verifier_enc=TokenBox().encrypt(verifier), redirect_uri=redirect, scopes=list(scopes),
                             created_by=actor.label, expires_at=utcnow() + STATE_LIFETIME))
-    audit.record(db, actor, "youtube.connect_started", "channel", ch.id, {"channel": channel_slug, "redirect": redirect})
-    return yt.auth_url(client.client_id, redirect, state, challenge)
+    audit.record(db, actor, "youtube.connect_started", "channel", ch.id, {"channel": channel_slug, "redirect": redirect, "permissions": list(groups)})
+    return yt.auth_url(client.client_id, redirect, state, challenge, scopes)
 
 
 # --- 2. complete ------------------------------------------------------------------------------------------------------------
@@ -107,13 +119,14 @@ def complete_sign_in(actor: Actor, state: str, code: str) -> str:
         if st is None or st.used_at is not None or st.expires_at < utcnow():
             raise YouTubeError("BAD_STATE", "This sign-in link is not valid any more (it is single-use and expires after 10 minutes). Start again.")
         st.used_at = utcnow()
-        verifier, redirect, channel_id, channel_slug = TokenBox().decrypt(st.verifier_enc), st.redirect_uri, st.channel_id, db.get(Channel, st.channel_id).slug  # type: ignore[union-attr]
+        verifier, redirect, channel_id = TokenBox().decrypt(st.verifier_enc), st.redirect_uri, st.channel_id
+        requested, channel_slug = list(st.scopes or yt.PHASE4_SCOPES), db.get(Channel, st.channel_id).slug  # type: ignore[union-attr]
     try:
         tokens = oauth().exchange_code(code, redirect, verifier)
     except yt.YouTubeApiError as e:
         raise YouTubeError("EXCHANGE_FAILED", f"Google did not accept the sign-in: {e.message}") from e
     granted = set(str(tokens.get("scope", "")).split())
-    missing = [s for s in yt.PHASE4_SCOPES if s not in granted]
+    missing = [s for s in requested if s not in granted]
     if missing:
         raise YouTubeError("SCOPES_MISSING", "Not every requested permission was granted, so nothing was saved. Missing: "
                                              + ", ".join(m.rsplit("/", 1)[-1] for m in missing) + ". Tick every box on Google's screen and try again.")
@@ -139,13 +152,17 @@ def complete_sign_in(actor: Actor, state: str, code: str) -> str:
             raise YouTubeError("ALREADY_USED", "That YouTube channel is already connected to a different channel in this app. Each internal channel needs its own.")
         conn = connection_for(db, channel_id) or YouTubeConnection(channel_id=channel_id)
         db.add(conn)
-        conn.status, conn.google_channel_id = "PENDING_CONFIRMATION", ident["id"]
+        same_channel = conn.status == "CONNECTED" and conn.google_channel_id == ident["id"]  # adding permissions to a confirmed channel changes nothing else
+        conn.status = "CONNECTED" if same_channel else "PENDING_CONFIRMATION"
+        conn.google_channel_id = ident["id"]
         conn.google_channel_title = str(ident.get("snippet", {}).get("title", ""))[:200]
         conn.google_channel_handle = (str(ident.get("snippet", {}).get("customUrl", "")) or None)
-        conn.scopes = sorted(granted)
+        conn.scopes = sorted(granted | set(conn.scopes or []) if same_channel else granted)
         conn.refresh_token_enc, conn.access_token_enc = box.encrypt(refresh), box.encrypt(tokens["access_token"])
         conn.access_expires_at = utcnow() + timedelta(seconds=int(tokens.get("expires_in", 3600)))
-        conn.confirmed_by = conn.confirmed_at = conn.last_error = None
+        conn.last_error = None
+        if not same_channel:
+            conn.confirmed_by = conn.confirmed_at = None
         ch = db.get(Channel, channel_id)
         conn.category_id = conn.category_id or CATEGORY_DEFAULT.get(ch.kind, "22")  # type: ignore[union-attr]
         db.flush()
@@ -252,6 +269,7 @@ def serialize(c: YouTubeConnection | None) -> dict[str, Any]:
         return {"status": "NOT_CONNECTED"}
     return {"status": c.status, "google_channel_id": c.google_channel_id, "google_channel_title": c.google_channel_title,
             "google_channel_handle": c.google_channel_handle, "scopes": [s.rsplit("/", 1)[-1] for s in c.scopes or []],
+            "can_read_analytics": has_group(c, "analytics"), "can_manage_comments": has_group(c, "comments"),
             "made_for_kids": c.made_for_kids, "category_id": c.category_id, "category_name": CATEGORIES.get(c.category_id),
             "confirmed_by": c.confirmed_by, "confirmed_at": iso(c.confirmed_at) if c.confirmed_at else None, "last_error": c.last_error}
 

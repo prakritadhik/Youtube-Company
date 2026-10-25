@@ -1,8 +1,7 @@
 """Claims the Research and Growth Manager makes in the department report.
 
 Every number is a machine-checkable count that the CEO re-runs against the database. Data the company does not have
-(search volume, trend strength, competitor statistics, audience analytics) is covered by the department's standard
-"unavailable: YouTube is not connected" claim, so the owner sees one statement instead of two.
+(search volume, trend strength, competitor statistics) is covered by one "unavailable" claim, so the owner sees one statement.
 """
 
 from __future__ import annotations
@@ -45,4 +44,6 @@ def claims(db: Session, actor: Actor, start: datetime, end: datetime, who: str) 
     add("{n} metadata set(s) were approved in the period.", "metadata_sets", {"status": "APPROVED"}, "approved_at")
     add("{n} metadata set(s) currently need revision.", "metadata_sets", {"status": "NEEDS_REVISION"}, windowed=False)
     add("{n} thumbnail concept(s) were approved in the period.", "thumbnail_concepts", {"status": "APPROVED"}, "approved_at")
+    out.append(reports.Claim("Search volume, keyword demand and trend strength are unavailable: no keyword or trend data source is connected.", ClaimClass.UNAVAILABLE, None,
+                             {"type": "source_not_connected", "source": "keyword_data"}, "integration status", who))
     return out

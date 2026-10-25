@@ -145,7 +145,7 @@ def test_only_the_owner_controls_schedules(db, agent, owner):
 
 
 def test_default_schedules_are_seeded_once_and_never_overwrite_the_owner(db, owner):
-    assert set(schedule.seed_defaults(db)) == {"health-check", "daily-cycle", "backup"}
+    assert set(schedule.seed_defaults(db)) == {"health-check", "daily-cycle", "backup", "analytics-collect", "comments-collect"}
     schedule.set_cadence(db, owner, "daily-cycle", {"kind": "daily", "at": "06:00"})
     assert schedule.seed_defaults(db) == []
     assert schedule.get(db, "daily-cycle").cadence == {"kind": "daily", "at": "06:00"}

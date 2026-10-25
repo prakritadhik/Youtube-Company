@@ -17,6 +17,8 @@ const NAV: { href: string; label: string; icon: string; perm?: string }[] = [
   { href: "/organization", label: "Organization", icon: "⌘" },
   { href: "/board", label: "Intelligence Board", icon: "▤" },
   { href: "/approvals", label: "Approvals", icon: "✓" },
+  { href: "/performance", label: "Performance", icon: "↗" },
+  { href: "/comments", label: "Comments", icon: "☰" },
   { href: "/operations", label: "Operations", icon: "◔" },
   { href: "/rights", label: "Originality & Rights", icon: "©" },
   { href: "/reports", label: "Executive Reports", icon: "≡" },

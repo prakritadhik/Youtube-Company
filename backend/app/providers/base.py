@@ -85,7 +85,10 @@ REGISTRY: dict[str, Provider] = {
                     note="tested against a mock Google; not yet run against the real service"),
          Capability("youtube.upload", "Upload, thumbnail, scheduling and read-back verification", True,
                     note="tested against a mock Google; the owner's first real upload (selftest) is its live test"),
-         Capability("youtube.analytics", "Channel and video metrics", False, note="Phase 5")),
+         Capability("youtube.analytics", "Read views, watch time, retention and similar figures; unavailable ones are recorded as unavailable", True,
+                    note="needs the analytics permission on the channel; tested against a mock Google"),
+         Capability("youtube.comments", "Read comments and post owner-approved replies, each read back to confirm", True,
+                    note="needs the comments permission on the channel; tested against a mock Google")),
         docs="docs/YOUTUBE.md",
     ),
     "canva": Provider(

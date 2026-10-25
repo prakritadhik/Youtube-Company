@@ -49,6 +49,7 @@ const problems = [];
     ["/organization", "Organization"], ["/board", "Company Intelligence Board"], ["/approvals", "Approval Center"],
     ["/rights", "Originality & Rights"], ["/reports", "Executive reports"], ["/settings", "Settings & control"],
     ["/diagnostics", "Diagnostics"], ["/plan", "Content plan"], ["/operations", "Operations"],
+    ["/performance", "Performance"], ["/comments", "Comments"],
   ];
   for (const [path, heading] of pages) {
     await page.goto(BASE + path);
@@ -56,6 +57,11 @@ const problems = [];
     await page.waitForLoadState("networkidle");
     await shot(path.replace(/\W+/g, "_") || "root");
   }
+  await page.goto(BASE + "/performance");
+  await page.getByText("Until then every figure is unavailable; none is shown as zero.").first().waitFor({ timeout: 15000 });
+  await page.getByText("Revenue is not collected").first().waitFor({ timeout: 15000 });
+  await page.goto(BASE + "/comments");
+  await page.getByText("No comments").first().waitFor({ timeout: 15000 });
   await page.goto(BASE + "/plan");
   await page.getByRole("button", { name: "Propose an idea" }).click();
   await page.getByLabel("Title", { exact: true }).fill("Lantern Parade Birthday");

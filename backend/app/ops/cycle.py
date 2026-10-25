@@ -18,11 +18,12 @@ from sqlalchemy import func, select
 
 from app.db import session_scope
 from app.enums import OperatingMode, TaskStatus, VideoStage
+from app.models.community import Comment, Metric, MetricGap, ReplyDraft
 from app.models.org import Channel
 from app.models.research import ContentIdea
 from app.models.tasks import Task
 from app.models.videos import Video
-from app.models.youtube import YouTubeUpload
+from app.models.youtube import YouTubeConnection, YouTubeUpload
 from app.ops import alerts, health, schedule
 from app.research import ideas
 from app.security.permissions import Actor
@@ -101,21 +102,47 @@ def run_cycle(db) -> dict[str, Any]:
     # F. publishing
     phases.append(_publishing(db, actor, now))
 
-    # G / H. not available yet
-    phases.append(_phase("monitoring", "unavailable", "Performance, retention and comment data are unavailable: YouTube analytics are not connected."))
+    # G. monitoring: what was actually collected, and what is waiting for a person
+    monitoring = _monitoring(db)
+    phases.append(monitoring)
+    # H. not available yet
     phases.append(_phase("learning", "unavailable", "No experiment or verified performance lesson exists to review yet."))
 
     # I. the executive report, built and independently verified like any other
     rep = reports.run_reporting_cycle(db)
     phases.append(_phase("report", "done", "Built the department reports, the COO's summary and the CEO's verified executive report.", executive_report_id=rep.id))
 
-    needs_you = len(needs_decision) + len(approved) + len(waiting) + len(blocked) + len(corrections)
+    needs_you = len(needs_decision) + len(approved) + len(waiting) + len(blocked) + len(corrections) + monitoring.get("needs_a_person", 0)
     quiet = needs_you == 0 and not stale
     if needs_you:
         alerts.raise_alert(db, "cycle:needs-you", "info", f"{needs_you} item(s) need your attention", "See the latest daily cycle on the Operations page.", source="daily-cycle")
     else:
         alerts.resolve(db, "cycle:needs-you", "nothing waiting")
     return {"ran_at": iso(now), "timezone": str(schedule.zone(db)), "quiet": quiet, "needs_attention": needs_you, "phases": phases}
+
+
+def _monitoring(db) -> dict[str, Any]:
+    connected = db.scalar(select(func.count()).select_from(YouTubeConnection).where(YouTubeConnection.status == "CONNECTED")) or 0
+    if not connected:
+        return _phase("monitoring", "unavailable", "Performance, retention and comment data are unavailable: no YouTube channel is connected.")
+
+    def last(task_type: str) -> Task | None:
+        return db.scalar(select(Task).where(Task.task_type == task_type, Task.status.in_((TaskStatus.COMPLETED.value, TaskStatus.SUBMITTED.value))).order_by(Task.id.desc()).limit(1))
+
+    perf, com = last("analytics.collect"), last("community.collect_comments")
+    waiting = dict(db.execute(select(Comment.risk, func.count()).where(Comment.is_ours.is_(False), Comment.status.in_(("NEW", "TRIAGED", "DRAFTED"))).group_by(Comment.risk)).all())
+    escalated = waiting.get("escalate", 0)
+    drafts = db.scalar(select(func.count()).select_from(ReplyDraft).where(ReplyDraft.status == "DRAFT")) or 0
+    gaps = db.scalar(select(func.count()).select_from(MetricGap)) or 0
+    stored = db.scalar(select(func.count()).select_from(Metric)) or 0
+    parts = [f"{connected} channel(s) connected.",
+             f"Performance data last collected {iso(perf.completed_at) if perf and perf.completed_at else 'never'} ({stored} figure(s) on record, {gaps} unavailable).",
+             f"{sum(waiting.values())} comment(s) wait for a person, {escalated} of them escalated; {drafts} reply draft(s) wait for approval."]
+    status = "done" if (perf or com) else "unavailable"
+    if status == "unavailable":
+        parts.append("Nothing has been collected yet: the first collection runs on its schedule, or use Collect now on the Performance page.")
+    return _phase("monitoring", status, " ".join(parts), channels_connected=connected, figures_on_record=stored, figures_unavailable=gaps, comments_waiting=waiting,
+                  reply_drafts_waiting=drafts, last_performance_task=perf.id if perf else None, last_comments_task=com.id if com else None, needs_a_person=escalated + drafts)
 
 
 def _publishing(db, actor: Actor, now) -> dict[str, Any]:

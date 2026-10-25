@@ -2,6 +2,7 @@ from app.models.approvals import ApprovalRequest
 from app.models.audit import AuditEvent
 from app.models.auth import LoginAttempt, User, UserSession
 from app.models.board import BoardAcknowledgement, BoardEntry, BoardEntryVersion, BoardRelease
+from app.models.community import Comment, Metric, MetricGap, ReplyDraft, RetentionPoint
 from app.models.finance import UsageRecord
 from app.models.ops import Alert, Schedule, WorkerHeartbeat
 from app.models.org import Agent, Channel, Department
@@ -15,6 +16,6 @@ from app.models.youtube import QuotaEntry, YouTubeAuthState, YouTubeConnection, 
 
 __all__ = [
     "Agent", "Alert", "ApprovalRequest", "Asset", "AuditEvent", "BoardAcknowledgement", "BoardEntry",
-    "BoardEntryVersion", "BoardRelease", "Channel", "ContentIdea", "CreativeBrief", "Department", "Evidence", "LoginAttempt", "MetadataSet", "OriginalityReview", "QAReport", "QuotaEntry",
-    "Report", "ResearchNote", "Schedule", "ScriptVersion", "SettingRow", "SourceRecord", "Task", "ThumbnailConcept", "TaskDependency", "UsageRecord", "User", "UserSession", "Video", "WorkerHeartbeat", "YouTubeAuthState", "YouTubeConnection", "YouTubeUpload",
+    "BoardEntryVersion", "BoardRelease", "Channel", "Comment", "ContentIdea", "CreativeBrief", "Department", "Evidence", "LoginAttempt", "Metric", "MetricGap", "MetadataSet", "OriginalityReview", "QAReport", "QuotaEntry",
+    "Report", "ReplyDraft", "ResearchNote", "RetentionPoint", "Schedule", "ScriptVersion", "SettingRow", "SourceRecord", "Task", "ThumbnailConcept", "TaskDependency", "UsageRecord", "User", "UserSession", "Video", "WorkerHeartbeat", "YouTubeAuthState", "YouTubeConnection", "YouTubeUpload",
 ]

@@ -180,7 +180,13 @@ export default function SettingsPage() {
         </Card>
 
         <Card title="Autonomy" subtitle="Applies only in Controlled autonomy mode.">
-          <p className="mb-3 text-sm">Comment replies: <Badge>{cfg.autonomy.comment_reply_policy === "draft_only" ? "Draft only (recommended)" : "Auto-reply to low-risk comments"}</Badge></p>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Comment replies</span>
+            <select className={inputCls} value={cfg.autonomy.comment_reply_policy} disabled={busy}
+              onChange={(e) => run(() => api("/api/settings/autonomy", { method: "PUT", body: { value: { comment_reply_policy: e.target.value } } }), "Reply policy updated.")}>
+              <option value="draft_only">Draft only: every reply waits for my approval (recommended)</option>
+              <option value="auto_low_risk">Send a template thank-you to plain praise without asking</option>
+            </select>
+            <span className="mt-1 block text-xs text-muted">The automatic option applies only in Controlled autonomy, on the channels ticked below, never on the medicine channel, and never to questions, complaints, or comments about safety, copyright, medicine or personal data. Each reply is still read back from YouTube.</span></label>
           <h3 className="mb-2 text-sm font-medium">Channels allowed to publish without per-video approval</h3>
           <div className="space-y-2">
             {(ch.data ?? []).map((c) => {

@@ -186,6 +186,10 @@ DEFAULTS: list[dict[str, Any]] = [
      "cadence": {"kind": "daily", "at": "07:30"}, "task_type": "ops.daily_cycle", "catch_up": "latest"},
     {"slug": "backup", "title": "Database backup", "description": "A verified SQLite backup. Copy data/ (including data/secrets/) elsewhere for a full backup.",
      "cadence": {"kind": "daily", "at": "02:00"}, "task_type": "system.backup_database", "catch_up": "latest"},
+    {"slug": "analytics-collect", "title": "Collect performance data", "description": "Fetches views, watch time, retention and similar figures for uploaded videos on connected channels. Reads only; says what is unavailable.",
+     "cadence": {"kind": "daily", "at": "06:00"}, "task_type": "analytics.collect", "catch_up": "latest"},
+    {"slug": "comments-collect", "title": "Fetch and sort comments", "description": "Fetches new public comments on uploaded videos and sorts them with rules. Reads only; never replies.",
+     "cadence": {"kind": "interval", "every_minutes": 720}, "task_type": "community.collect_comments", "catch_up": "latest"},
 ]
 
 

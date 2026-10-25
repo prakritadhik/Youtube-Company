@@ -47,7 +47,8 @@ DEFAULTS: dict[str, Any] = {
     # the build environment could not confirm them (see docs/PROVIDERS.md). The Google Cloud console is the authority.
     "youtube": {
         "daily_quota_units": 10000,
-        "costs": {"videos.insert": 1600, "thumbnails.set": 50, "videos.list": 1, "channels.list": 1, "videos.update": 50, "videos.delete": 50},
+        "costs": {"videos.insert": 1600, "thumbnails.set": 50, "videos.list": 1, "channels.list": 1, "videos.update": 50, "videos.delete": 50,
+                  "commentThreads.list": 1, "comments.insert": 50, "comments.list": 1},
         "chunk_mb": 8,
     },
 }

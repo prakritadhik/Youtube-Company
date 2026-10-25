@@ -39,6 +39,17 @@ class FakeGoogle:
         self.thumbnail_error: tuple[int, str, str] | None = None
         self.processing = "processing"
         self.channel_for_videos: str | None = None  # override channelId reported for uploads (simulates a wrong account)
+        # statistics, analytics, comments (Phase 5)
+        self.stats: dict[str, dict[str, str]] = {}  # video id -> statistics block (strings, as YouTube returns them)
+        self.analytics_days: dict[str, list[dict[str, Any]]] = {}  # video id -> one dict per day: {"day": "2026-10-01", "views": 10, ...}
+        self.analytics_refused: dict[str, tuple[int, str, str]] = {}  # metric name -> error returned when it is requested
+        self.retention: dict[str, list[tuple[float, float, float]]] = {}  # video id -> (ratio, audienceWatchRatio, relativeRetentionPerformance)
+        self.threads: dict[str, list[dict[str, Any]]] = {}  # video id -> commentThread resources, newest first
+        self.comments_disabled: set[str] = set()
+        self.page_size = 100
+        self.replies: dict[str, dict[str, Any]] = {}  # reply id -> comment resource
+        self.lose_reply_response = False  # the reply is stored but the connection dies before the answer arrives
+        self.altered_reply_text: str | None = None  # what YouTube "stored" instead of what was sent (read-back mismatch)
         self.transport = httpx.MockTransport(self._handle)
 
     # --- helpers ---
@@ -88,11 +99,87 @@ class FakeGoogle:
                 return failure
             vid = q.get("id", [""])[0]
             v = self.videos.get(vid)
-            return httpx.Response(200, json={"items": [self._resource(v)] if v else []})
+            if v is None and vid in self.stats:  # a video that exists on YouTube although this mock never saw it uploaded
+                v = {"id": vid, "snippet": {"channelId": self.channel["id"], "title": vid}, "status": {"privacyStatus": "private", "uploadStatus": "processed"}}
+            res = self._resource(v) if v else None
+            if res is not None and "statistics" in q.get("part", [""])[0] and vid in self.stats:
+                res["statistics"] = self.stats[vid]
+            return httpx.Response(200, json={"items": [res] if res else []})
+        if url.hostname == "youtubeanalytics.googleapis.com" and path == "/v2/reports":
+            return self._analytics(req, q)
+        if path == "/youtube/v3/commentThreads" and req.method == "GET":
+            return self._threads(req, q)
+        if path == "/youtube/v3/comments":
+            return self._comments(req, q)
         if path == "/youtube/v3/videos" and req.method == "DELETE":
             self.videos.pop(q.get("id", [""])[0], None)
             return httpx.Response(204)
         return httpx.Response(404, json={"error": {"code": 404, "message": f"unhandled {req.method} {url.path}"}})
+
+    # --- Phase 5: analytics and comments ---
+    def _needs(self, scope_name: str) -> httpx.Response | None:
+        if not any(sc.endswith(scope_name) for sc in self.granted_scopes):
+            return self._err(403, "insufficientPermissions", "Request had insufficient authentication scopes.")
+        return None
+
+    def _analytics(self, req: httpx.Request, q: dict[str, list[str]]) -> httpx.Response:
+        if (failure := self._queued_failure("analytics.reports")):
+            return failure
+        if (denied := self._needs("yt-analytics.readonly")):
+            return denied
+        metrics = q["metrics"][0].split(",")
+        dims = q.get("dimensions", [""])[0]
+        vid = q.get("filters", ["video==?"])[0].split("==", 1)[1]
+        for m in metrics:
+            if m in self.analytics_refused:
+                return self._err(*self.analytics_refused[m])
+        if dims == "day":
+            rows = self.analytics_days.get(vid, [])
+            headers = [{"name": "day"}, *({"name": m} for m in metrics)]
+            return httpx.Response(200, json={"columnHeaders": headers, "rows": [[r["day"], *(r.get(m) for m in metrics)] for r in rows]})
+        if dims == "elapsedVideoTimeRatio":
+            pts = self.retention.get(vid, [])
+            headers = [{"name": "elapsedVideoTimeRatio"}, *({"name": m} for m in metrics)]
+            return httpx.Response(200, json={"columnHeaders": headers, "rows": [[a, b, c] for a, b, c in pts]})
+        return self._err(400, "badRequest", f"unsupported dimensions {dims!r}")
+
+    def _threads(self, req: httpx.Request, q: dict[str, list[str]]) -> httpx.Response:
+        if (failure := self._queued_failure("commentThreads.list")):
+            return failure
+        if (denied := self._needs("youtube.force-ssl")):
+            return denied
+        vid = q["videoId"][0]
+        if vid in self.comments_disabled:
+            return self._err(403, "commentsDisabled", "The video identified by the videoId parameter has disabled comments.")
+        items = self.threads.get(vid, [])
+        start = int(q.get("pageToken", ["0"])[0])
+        page = items[start:start + self.page_size]
+        body: dict[str, Any] = {"items": page}
+        if start + self.page_size < len(items):
+            body["nextPageToken"] = str(start + self.page_size)
+        return httpx.Response(200, json=body)
+
+    def _comments(self, req: httpx.Request, q: dict[str, list[str]]) -> httpx.Response:
+        if (denied := self._needs("youtube.force-ssl")):
+            return denied
+        if req.method == "POST":
+            if (failure := self._queued_failure("comments.insert")):
+                return failure
+            body = json.loads(req.content)["snippet"]
+            rid = f"reply{len(self.replies) + 1:03d}"
+            stored = self.altered_reply_text if self.altered_reply_text is not None else body["textOriginal"]
+            self.replies[rid] = {"id": rid, "snippet": {"parentId": body["parentId"], "textOriginal": stored, "textDisplay": stored,
+                                                          "authorChannelId": {"value": self.channel["id"]}, "authorDisplayName": self.channel["snippet"]["title"]}}
+            if self.lose_reply_response:
+                self.lose_reply_response = False
+                raise httpx.ReadError("connection dropped before the answer arrived")
+            return httpx.Response(200, json=self.replies[rid])
+        if (failure := self._queued_failure("comments.list")):
+            return failure
+        if "parentId" in q:
+            return httpx.Response(200, json={"items": [r for r in self.replies.values() if r["snippet"]["parentId"] == q["parentId"][0]]})
+        rid = q.get("id", [""])[0]
+        return httpx.Response(200, json={"items": [self.replies[rid]] if rid in self.replies else []})
 
     def _token(self, req: httpx.Request) -> httpx.Response:
         form = {k: v[0] for k, v in parse_qs(req.content.decode()).items()}
