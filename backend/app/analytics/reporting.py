@@ -32,6 +32,10 @@ def claims(db: Session, actor: Actor, start: datetime, end: datetime, who: str, 
         add("{n} channel(s) are connected to YouTube.", "youtube_connections", {"status": "CONNECTED"}, windowed=False)
         add("{n} performance figure(s) were retrieved from YouTube in the period.", "metrics", {})
         add("{n} figure(s) are recorded as unavailable, each with YouTube's reason.", "metric_gaps", {}, windowed=False)
+        add("{n} lesson(s) are waiting for investigation, verification or the owner's approval.", "board_entries", {"status": ["OBSERVED", "UNDER_INVESTIGATION", "VERIFIED"]}, windowed=False)
+        add("{n} lesson(s) or experiments are in force as active instructions.", "board_entries", {"status": "ACTIVE_INSTRUCTION"}, windowed=False)
+        add("{n} experiment(s) are running.", "experiments", {"status": "RUNNING"}, windowed=False)
+        add("{n} experiment(s) were concluded in the period.", "experiments", {"status": "CONCLUDED"}, "concluded_at")
     else:
         add("{n} comment(s) were fetched in the period.", "comments", {})
         add("{n} comment(s) in the period were escalated for a person (safety, copyright or medical).", "comments", {"risk": "escalate"})

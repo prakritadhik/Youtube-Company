@@ -303,6 +303,12 @@ def _record_board_use(db: Session, task: Task) -> None:
     info = board.acknowledge(db, org.actor_for(agent), channel.slug if channel else None, task.id)  # type: ignore[arg-type]
     task.board_version_used = info["release_version"]
     task.board_digest_used = info["digest"]
+    task.lessons_applied = lesson_ids(info)
+
+
+def lesson_ids(info: dict[str, Any]) -> list[str]:
+    """The board entries (instructions and experiments) that were in force for a task when it started, by public id."""
+    return [e["public_id"] for e in (*info["instructions"], *info["experiments"])]
 
 
 def begin(db: Session, actor: Actor, task_id: int) -> Task:
@@ -317,6 +323,7 @@ def begin(db: Session, actor: Actor, task_id: int) -> Task:
     info = board.assert_acknowledged(db, actor.agent_id, channel.slug if channel else None)
     task.board_version_used = info["release_version"]
     task.board_digest_used = info["digest"]
+    task.lessons_applied = lesson_ids(info)
     task.attempts += 1
     task.started_at = task.started_at or utcnow()
     task.locked_by = actor.label
@@ -596,7 +603,7 @@ def summary(db: Session, t: Task) -> dict[str, Any]:
         "blocker": t.blocked_reason, "attempts": t.attempts, "evidence_count": n_ev,
         "review_notes": t.review_notes, "created_at": iso(t.created_at), "updated_at": iso(t.updated_at),
         "completed_at": iso(t.completed_at), "due_at": iso(t.due_at),
-        "board_version_used": t.board_version_used,
+        "board_version_used": t.board_version_used, "lessons_applied": list(t.lessons_applied or []),
     }
 
 

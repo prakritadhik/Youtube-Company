@@ -63,6 +63,7 @@ class Task(Base):
 
     board_version_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
     board_digest_used: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lessons_applied: Mapped[list[str]] = mapped_column(JSON, default=list)  # board entries (LSN-/EXP- ids) in force when the task started
 
     estimated_cost_micro_usd: Mapped[int] = mapped_column(BigInteger, default=0)
     actual_cost_micro_usd: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

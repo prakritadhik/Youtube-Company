@@ -149,11 +149,11 @@ def test_quiet_period_is_reported_honestly_not_invented(db, agent):
     # verified zeros are reported as "quiet departments", not silently dropped and not listed 35 times
     assert len(ex.content["quiet_departments"]) == 7 and ex.content["sections"]["verified_facts"] == []
     # every department verifies 5 task counts; Research and Growth also verifies 9 counts of its own records (ideas, notes, metadata, thumbnails),
-    # Analytics 3 (connections, figures, gaps) and Community 4 (comments, escalations, drafts, replies)
-    own = {"research-growth": 14, "analytics-improvement": 8, "community": 9}
+    # Analytics 7 (connections, figures, gaps, lessons waiting, active lessons, running and concluded experiments) and Community 4 (comments, escalations, drafts, replies)
+    own = {"research-growth": 14, "analytics-improvement": 12, "community": 9}
     assert all(q["verified_zero_checks"] == own.get(q["department"], 5) and "verified from task records" in q["statement"]
                for q in ex.content["quiet_departments"])
-    assert ex.content["check_summary"]["confirmed"] == 60  # every check was still run
+    assert ex.content["check_summary"]["confirmed"] == 64  # every check was still run
 
 
 def test_a_manager_report_that_went_stale_before_verification_is_flagged(db, agent):
@@ -234,7 +234,7 @@ def test_owner_report_stays_concise_but_nothing_is_dropped_from_the_ceo_record(d
     facts = ex.content["sections"]["verified_facts"]
     assert 0 < len(facts) <= 3 and all(f["value"] for f in facts)          # only material facts in Layer C
     assert "production" not in {q["department"] for q in ex.content["quiet_departments"]}
-    assert len(ex.verification["results"]) == 60                              # all checks kept in Layer B: 7 departments x 6, plus 9 research, 3 analytics, 4 community and 2 'unavailable' claims
+    assert len(ex.verification["results"]) == 64                              # all checks kept in Layer B: 7 departments x 6, plus 9 research, 7 analytics, 4 community and 2 'unavailable' claims
     unavailable = ex.content["sections"]["unavailable_data"]
     # each statement is said once, with who reported it: the shared YouTube one (all 7 departments) and one each from Research and Community
     by_text = {u["statement"]: u for u in unavailable}

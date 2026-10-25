@@ -60,6 +60,7 @@ class TaskContext:
     channel_slug: str | None
     video_id: int | None
     assigned_agent: str | None
+    lessons: list[str] = field(default_factory=list)  # board entries in force when this task started (public ids)
 
     def heartbeat(self) -> None:
         with session_scope() as db:
@@ -112,7 +113,7 @@ class Runner:
             ch = db.get(Channel, task.channel_id) if task.channel_id else None
             agent = task.assigned_agent.slug if task.assigned_agent else None
             ctx = TaskContext(task.id, self.worker_id, task.task_type, dict(task.input_refs), ch.slug if ch else None,
-                              task.video_id, agent)
+                              task.video_id, agent, list(task.lessons_applied or []))
             est = task.estimated_cost_micro_usd
         self._execute(ctx, est)
         return ctx.task_id
@@ -141,7 +142,8 @@ class Runner:
                 tasks.fail_run(db, self.actor, ctx.task_id, self.worker_id, e, retryable=True)
             return
         with session_scope() as db:
-            tasks.finish_run(db, self.actor, ctx.task_id, self.worker_id, result=out.result,
+            tasks.finish_run(db, self.actor, ctx.task_id, self.worker_id,
+                             result={**out.result, "lessons_applied": ctx.lessons} if ctx.lessons else out.result,
                              output_refs=out.output_refs, evidence_specs=out.evidence,
                              actual_cost_micro_usd=out.actual_cost_micro_usd)
 

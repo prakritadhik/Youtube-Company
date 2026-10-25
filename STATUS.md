@@ -5,8 +5,8 @@ _Last updated: 2026-10-25 · Branch `claude/sweet-hamilton-hvxkym`_
 ## Summary
 
 **Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging), 4 (YouTube integration, mock-tested
-only), 5 (performance data and comments, mock-tested only) and 7 (scheduler, daily cycle, alerts, health)** are built and tested. Phase 6 is only
-a foundation. The system can assemble, check and rights-screen a real video from local assets, plan content
+only), 5 (performance data and comments, mock-tested only), 6 (lessons, experiments and comparisons) and 7 (scheduler, daily cycle, alerts, health)** are built and tested.
+All seven phases now exist; none of the YouTube-dependent ones has touched the real YouTube, and no real experiment has run. The system can assemble, check and rights-screen a real video from local assets, plan content
 per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts. It does **not** yet call
 any AI provider, and it has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
 anything, and it is not autonomous. The soundtrack is an instrumental with
@@ -20,7 +20,7 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 | 3 Research and SEO | ✅ built and tested (no data source / language model) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
 | 4 YouTube integration | 🟨 built, **mock-tested only** | Sign-in, identity confirmation, resumable upload, thumbnail, scheduling, read-back verification, quota ledger; needs your OAuth client and a first real run (docs/YOUTUBE.md) |
 | 5 Analytics and community | 🟨 built, **mock-tested only** | Daily collection of totals, daily figures and retention with source and time; unavailable figures carry YouTube's reason, never zero; comment retrieval with fixed English-only rules (`rules-v1`); template thank-yous for plain praise only; owner-approved replies, read back; Performance and Comments pages. Needs the Phase 4 Google setup plus the analytics and comments permissions (docs/ANALYTICS.md) |
-| 6 Management and improvement | 🟨 foundation only | Reporting chain, board, acknowledgements exist as deterministic code; no LLM narrative, no experiments module |
+| 6 Management and improvement | ✅ built and tested (no real data yet) | Lessons mined from finished workflows and driven through the board by you; lessons recorded on later tasks; experiments (seeded random arms, no test before the planned sample, permutation test, your decision); video comparisons; a real learning phase in the daily cycle. No real experiment has run; no language-model narrative (docs/IMPROVEMENT.md) |
 | 7 Controlled autonomy | ✅ built and tested (restart-verified on Linux) | Persistent scheduler with catch-up, daily operating cycle, alerts, worker heartbeat, health checks, gated autonomous upload queueing; no e-mail/phone alerts; Windows run untested |
 
 ## Phase 1 acceptance criteria
@@ -100,6 +100,25 @@ API returns when it is run", and the first real collection is the live test (doc
 | The daily cycle's monitoring phase reports what was collected and what waits for a person (and counts it as needing you) | same |
 | In a browser (seeded with mock-Google data): Performance, Comments and Settings render; 390 px width no overflow; no console errors; smoke test passes on a fresh install | Playwright runs |
 
+## Phase 6 acceptance criteria
+
+> A verified lesson from one completed workflow can be approved, stored, communicated to relevant workers, and referenced in a later task.
+
+**Met**, in one tested sequence (`test_a_verified_lesson_is_approved_stored_sent_to_relevant_workers_and_referenced_in_a_later_task`) and in a real browser on seeded data:
+
+| Step | Evidence |
+|---|---|
+| A completed workflow (cleared video whose QA failed once and was corrected) yields an OBSERVED, low-confidence, channel-specific lesson with `db_record` evidence | `test_improvement_lessons.py` (13) |
+| Before approval nothing is an instruction: a task started then references nothing; an observation cannot be activated | same |
+| Investigated by the owner, **verified by the CEO role re-reading the evidence** (deleted records make verification fail), approved by the owner, which publishes a new board version | same; `test_api_improvement.py` |
+| Communicated to the relevant workers only: a production worker on that channel acknowledges it and the task records it (`lessons_applied`, in the result and in the handler's context); another channel and another department receive nothing | same |
+| Referenced in a later task, visibly: the Organization page and a video's task list show "lessons in force"; an adopted experiment is referenced the same way | same; `test_improvement_experiments.py` |
+| Experiments: seeded random arms before publication; strict measurement; **no p-value below the planned sample**; exact/seeded permutation test checked against a brute-force count; attrition and repeated looks disclosed; confidence capped at medium; owner-only decisions; adoption becomes an instruction, rejection a recorded failed experiment, repeat a new plan | `test_improvement_experiments.py` (24), `test_improvement_stats.py` (8) |
+| Comparisons never mix channels, rank only complete figures, and give the reason for the rest | `test_improvement_compare.py` (5) |
+| Daily cycle: queues the mining task once a day, counts what waits for you, flags experiments ready to analyse but never analyses by itself; department claims the CEO re-runs | `test_improvement_cycle.py` (3) |
+| Fourteen deliberate code mutations across lessons, statistics, measurement, assignment and decisions: twelve made a test fail at once; two survived (a published video still enrollable through a private upload; a mutation that was not effective) and were closed by a new test | mutation log in the session; both now caught |
+| In a browser (seeded data): Lessons (verify → approve), Experiments (analysis, decision), Compare, board, a video's experiment card; no console errors; no overflow at 390 px; smoke test passes on a fresh install | Playwright runs |
+
 ## Phase 4 acceptance criteria
 
 > Complete a real integration test with an authorized account, **or clearly document which external configuration remains necessary.**
@@ -123,11 +142,11 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **701 passed** (about 90 s with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **757 passed** (about 2 min with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
-| Frontend typecheck (`tsc --noEmit`) and production build | pass (16 routes, including `/performance` and `/comments`) |
-| Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 15 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
+| Frontend typecheck (`tsc --noEmit`) and production build | pass (17 routes, including `/performance`, `/comments` and `/learning`) |
+| Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 16 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
 | Live concurrency stress (API + worker + 3rd process) | 150 concurrent writes, 60 tasks, 80 reads: 0 errors, audit chain intact over 352 events |
 | Video page in a real browser (demo data) | player, lyrics, rights report, 19 QA rows, provenance table render; no horizontal overflow, no console errors |
 | Clean-clone install via `scripts/setup.sh` | see "Install verification" below (verified at the end of Phase 1; not repeated for Phase 2) |
@@ -181,6 +200,12 @@ figures and retention; retention analysis; comment retrieval and `rules-v1` tria
 replies with an optional strict auto-policy; scheduled `analytics.collect` and `community.collect_comments`; department-report claims for analytics and community;
 the monitoring phase of the daily cycle; Performance and Comments pages and Settings controls. Details: [docs/ANALYTICS.md](docs/ANALYTICS.md).
 
+## Implemented (Phase 6)
+
+Experiment, arm and workflow-lesson records (migration 0007) and `lessons_applied` on tasks; lesson mining from QA and originality history; owner-driven board actions with
+the CEO's real verification; experiments with seeded assignment, strict measurement, a permutation test, decisions that act on the board; video comparisons; the daily
+cycle's learning phase; department claims; the Learning page, a video's experiment card and "lessons in force" on tasks. Details: [docs/IMPROVEMENT.md](docs/IMPROVEMENT.md).
+
 ## Implemented (Phase 7)
 
 Persistent schedules with catch-up and skip policies, idempotent slots, owner time zone; the worker's heartbeat; alerts (de-duplicated,
@@ -220,6 +245,9 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 * The scheduler runs inside the worker, so it only works while the launcher is running; there is no Windows service or Task Scheduler entry yet.
 * The reporting chain is deterministic. No language model writes narrative yet. Agent "intelligence" is not
   implemented: roles define permissions and duties; LLM-backed behaviour arrives with the provider adapters.
+* **No real experiment has run.** The first needs a connected channel and at least ten public videos (five per arm). If YouTube omits zero-view days from its daily report, small
+  channels' windows will stay "incomplete" until the first real collection shows what it returns (docs/IMPROVEMENT.md). Lessons are mined only from QA and originality history;
+  nothing proposes, words or judges lessons with a language model, and the software never changes its own thresholds because of a lesson.
 * **Revenue is never collected** (shown as unavailable). Demographics, traffic sources and competitor figures are not collected. Comment sorting is fixed rules,
   English only and blunt; there is no language-model sentiment or reply wording, and a comment edited or deleted on YouTube after collection is not tracked.
   No moderation action (hide, report, ban) exists; a reply is the only write.
@@ -244,8 +272,11 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 5. **Phase 5 (performance data and comments):** also enable *YouTube Analytics API* in the same Google Cloud project, then press *Allow* next to
    *Performance data* and *Comments* for each channel in Settings → YouTube, and run *Collect performance now* once. If you want automatic thank-yous, choose
    that policy in Settings → Autonomy (Controlled autonomy, listed non-medicine channels only). Tell me what the first collection reports as unavailable.
-6. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
-7. A named human reviewer process for medicine videos (today: you).
+6. **Phase 6 (learning):** check *Learning → Lessons* now and then: finished workflows propose lessons that only you can turn into instructions. To run an experiment, plan it
+   under *Learning → Experiments* before the videos are published (at least five per arm), add each video while it is still unpublished, and make treatment videos exactly as their
+   page says. Nothing can be concluded until ten public videos have a full first week of figures.
+7. Spending limits (default $0) and which channels you ever want in Controlled autonomy.
+8. A named human reviewer process for medicine videos (today: you).
 
 ## Install verification
 

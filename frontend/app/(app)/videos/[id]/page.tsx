@@ -6,6 +6,7 @@ import { useApi } from "@/lib/api";
 import { useAuth } from "@/components/auth";
 import { PackagingCards } from "@/components/packaging";
 import { YouTubeVideoCard } from "@/components/youtube";
+import { VideoExperimentNote } from "@/components/learning";
 import { Badge, Card, Empty, ErrorNote, KeyValue, List, Loading, PageHeader, Severity, StatusBadge, Table, Td, Th } from "@/components/ui";
 import { fmtDate, titleCase } from "@/lib/format";
 import type { Tone, VideoDetail } from "@/lib/types";
@@ -52,6 +53,7 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
           )}
 
           <PackagingCards videoId={v.id} canWrite={can("video:manage")} />
+          <VideoExperimentNote videoId={v.id} />
           <YouTubeVideoCard videoId={v.id} canWrite={can("video:manage")} demo={demo} />
 
           <Card title="Originality & rights report" subtitle={v.rights ? `Review v${v.rights.version}, ${fmtDate(v.rights.created_at)}` : undefined}
@@ -135,7 +137,7 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
           )}
 
           <Card title="Production tasks">
-            <ul className="space-y-2 text-sm">{v.tasks.map((t) => <li key={t.id} className="flex items-start justify-between gap-2"><span>{t.title.split(" — ")[0]}<div className="text-xs text-muted">{t.owner}</div></span><StatusBadge status={t.status} /></li>)}
+            <ul className="space-y-2 text-sm">{v.tasks.map((t) => <li key={t.id} className="flex items-start justify-between gap-2"><span>{t.title.split(" — ")[0]}<div className="text-xs text-muted">{t.owner}{(t.lessons_applied ?? []).length > 0 && ` · lessons in force: ${t.lessons_applied!.join(", ")}`}</div></span><StatusBadge status={t.status} /></li>)}
               {v.tasks.length === 0 && <li className="text-muted">No tasks.</li>}</ul>
           </Card>
         </div>

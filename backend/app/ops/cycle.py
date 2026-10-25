@@ -27,7 +27,7 @@ from app.models.youtube import YouTubeConnection, YouTubeUpload
 from app.ops import alerts, health, schedule
 from app.research import ideas
 from app.security.permissions import Actor
-from app.services import gate, reports
+from app.services import gate, reports, tasks
 from app.services import settings as settings_svc
 from app.storage import write_json_artifact
 from app.timeutil import iso, utcnow
@@ -106,13 +106,14 @@ def run_cycle(db) -> dict[str, Any]:
     monitoring = _monitoring(db)
     phases.append(monitoring)
     # H. not available yet
-    phases.append(_phase("learning", "unavailable", "No experiment or verified performance lesson exists to review yet."))
+    learning = _learning(db, actor, now)
+    phases.append(learning)
 
     # I. the executive report, built and independently verified like any other
     rep = reports.run_reporting_cycle(db)
     phases.append(_phase("report", "done", "Built the department reports, the COO's summary and the CEO's verified executive report.", executive_report_id=rep.id))
 
-    needs_you = len(needs_decision) + len(approved) + len(waiting) + len(blocked) + len(corrections) + monitoring.get("needs_a_person", 0)
+    needs_you = len(needs_decision) + len(approved) + len(waiting) + len(blocked) + len(corrections) + monitoring.get("needs_a_person", 0) + learning.get("needs_a_person", 0)
     quiet = needs_you == 0 and not stale
     if needs_you:
         alerts.raise_alert(db, "cycle:needs-you", "info", f"{needs_you} item(s) need your attention", "See the latest daily cycle on the Operations page.", source="daily-cycle")
@@ -143,6 +144,41 @@ def _monitoring(db) -> dict[str, Any]:
         parts.append("Nothing has been collected yet: the first collection runs on its schedule, or use Collect now on the Performance page.")
     return _phase("monitoring", status, " ".join(parts), channels_connected=connected, figures_on_record=stored, figures_unavailable=gaps, comments_waiting=waiting,
                   reply_drafts_waiting=drafts, last_performance_task=perf.id if perf else None, last_comments_task=com.id if com else None, needs_a_person=escalated + drafts)
+
+
+def _learning(db, actor: Actor, now) -> dict[str, Any]:
+    """What the company has learned and what is waiting: mine finished workflows for lessons, count what waits for a person, flag experiments that are ready."""
+    from app.improvement import experiments as exp_svc
+    from app.improvement import lessons as lessons_svc
+    from app.models.board import BoardEntry
+    from app.models.improvement import Experiment
+
+    queued = None
+    unexamined = lessons_svc.candidates(db)
+    if unexamined:
+        t = tasks.create(db, actor, title="Look for lessons in completed workflows", task_type="improvement.mine_lessons", assigned_agent_slug="continuous-improvement-scientist",
+                         idempotency_key=f"mine-lessons:{now.astimezone(schedule.zone(db)).date().isoformat()}")
+        queued = t.id
+    by_status = dict(db.execute(select(BoardEntry.status, func.count()).group_by(BoardEntry.status)).all())
+    waiting_review = by_status.get("OBSERVED", 0) + by_status.get("UNDER_INVESTIGATION", 0) + by_status.get("VERIFIED", 0)
+    running = list(db.scalars(select(Experiment).where(Experiment.status == "RUNNING")))
+    ready, awaiting = [], []
+    for e in running:
+        m = exp_svc.measurements(db, e)
+        done = {a: sum(1 for x in m if x["arm"] == a and x["status"] == "complete") for a in exp_svc.ARMS}
+        if e.analysis and e.analysis.get("conclusion") != "insufficient_data":
+            awaiting.append({"experiment": e.public_id, "title": e.title, "conclusion": e.analysis["conclusion"]})
+        elif min(done.values()) >= e.min_per_group:
+            ready.append({"experiment": e.public_id, "title": e.title, "finished": done})
+    active = by_status.get("ACTIVE_INSTRUCTION", 0)
+    needs = waiting_review + len(ready) + len(awaiting)
+    if not (unexamined or by_status or running):
+        return _phase("learning", "nothing_to_do", "No finished workflow has been examined yet, no lesson is on the board and no experiment is running.", needs_a_person=0)
+    parts = [f"{active} active instruction(s)", f"{by_status.get('APPROVED_FOR_TESTING', 0)} being tested", f"{waiting_review} lesson(s) waiting for review, verification or your approval",
+             f"{len(running)} experiment(s) running ({len(ready)} with enough finished videos to analyse, {len(awaiting)} awaiting your decision)"]
+    if queued:
+        parts.append(f"{len(unexamined)} finished workflow(s) queued to be examined for lessons")
+    return _phase("learning", "done", ". ".join(parts) + ".", lessons_by_status=by_status, ready_to_analyse=ready, awaiting_decision=awaiting, mining_task=queued, needs_a_person=needs)
 
 
 def _publishing(db, actor: Actor, now) -> dict[str, Any]:

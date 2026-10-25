@@ -28,6 +28,7 @@ function TaskRow({ t }: { t: TaskSummary }) {
         {t.depends_on.length > 0 && <div>Depends on task {t.depends_on.map((d) => `#${d}`).join(", ")}</div>}
         {t.blocker && <div className="text-danger">Blocker: {t.blocker}</div>}
         <div>Evidence items: {t.evidence_count} · attempts: {t.attempts}{t.board_version_used != null && ` · board v${t.board_version_used}`}</div>
+        {(t.lessons_applied ?? []).length > 0 && <div>Lessons in force when it started: {t.lessons_applied!.join(", ")}</div>}
         {t.review_notes && <div>Manager review: {t.review_notes}</div>}
       </div>
     </li>

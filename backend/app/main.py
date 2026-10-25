@@ -18,6 +18,7 @@ from app.api import (
     routes_control,
     routes_diagnostics,
     routes_executive,
+    routes_improvement,
     routes_ops,
     routes_production,
     routes_research,
@@ -26,6 +27,9 @@ from app.api import (
 from app.api.ratelimit import RateLimiter
 from app.community.replies import ReplyError
 from app.config import get_settings
+from app.improvement import experiments as experiments_svc
+from app.improvement import lessons as lessons_svc
+from app.improvement import measure as measure_svc
 from app.ops import schedule as schedule_svc
 from app.research import ideas as ideas_svc
 from app.research import notes as notes_svc
@@ -91,7 +95,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
     for r in (routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router,
-              routes_research.router, routes_youtube.router, routes_ops.router, routes_community.router):
+              routes_research.router, routes_youtube.router, routes_ops.router, routes_community.router, routes_improvement.router):
         app.include_router(r)
 
     @app.get("/api/health", tags=["system"])
@@ -128,7 +132,7 @@ def create_app() -> FastAPI:
         (control.ExternalActionBlocked, 409), (ideas_svc.IdeaError, 409), (notes_svc.ResearchError, 422), (seo_svc.SeoError, 409),
         (thumbs_svc.ThumbError, 409),
         (conn_svc.YouTubeError, 409), (upload_svc.UploadError, 409), (quota_svc.QuotaExceeded, 409),
-        (schedule_svc.ScheduleError, 409), (ReplyError, 409),
+        (schedule_svc.ScheduleError, 409), (ReplyError, 409), (experiments_svc.ExperimentError, 409), (lessons_svc.LessonError, 409), (measure_svc.MeasureError, 422),
     ):
         app.add_exception_handler(exc_type, err(code))
     app.add_exception_handler(Exception, unexpected)

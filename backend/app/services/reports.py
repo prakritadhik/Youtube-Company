@@ -21,6 +21,7 @@ from app.models.approvals import ApprovalRequest
 from app.models.board import BoardEntry
 from app.models.community import Comment, Metric, MetricGap, ReplyDraft
 from app.models.finance import UsageRecord
+from app.models.improvement import Experiment
 from app.models.org import Agent, Department
 from app.models.reports import Report
 from app.models.research import ContentIdea, MetadataSet, ResearchNote, ThumbnailConcept
@@ -58,6 +59,7 @@ _ENTITIES: dict[str, tuple[Any, str]] = {  # entity → (model, default time col
     "metric_gaps": (MetricGap, "last_attempt"),
     "comments": (Comment, "retrieved_at"),
     "reply_drafts": (ReplyDraft, "created_at"),
+    "experiments": (Experiment, "created_at"),
 }
 
 

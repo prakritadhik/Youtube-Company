@@ -263,6 +263,27 @@ def revise(
     return e
 
 
+def record_result(db: Session, actor: Actor, entry_id: int, *, confidence: Confidence, result_text: str) -> BoardEntry:
+    """Record an experiment's outcome on its own entry: add the result to the description and set the confidence it earned.
+
+    Allowed only while the entry is being tested, and only by someone who may approve testing. It never changes the status; because the text workers
+    read changes, a new board version is published and workers re-acknowledge it. Editing any other way would demote the entry.
+    """
+    actor.require(P.BOARD_APPROVE_TESTING)
+    e = _get(db, entry_id)
+    if e.status != S.APPROVED_FOR_TESTING.value:
+        raise BoardError("a result can be recorded only on an entry that is being tested")
+    if not result_text.strip():
+        raise BoardError("a result needs its text")
+    e.description = f"{e.description}\n\nResult: {result_text.strip()}"
+    e.confidence = confidence.value
+    e.version += 1
+    _save_version(db, e, actor, "result recorded")
+    audit.record(db, actor, "board.result_recorded", "board_entry", e.public_id, {"confidence": confidence.value})
+    _publish_release(db, actor, e, f"{e.public_id} result recorded")
+    return e
+
+
 # --- transitions ---------------------------------------------------------------------------------------
 
 

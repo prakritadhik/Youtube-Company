@@ -37,6 +37,7 @@ _RECORD_TABLES: dict[str, str] = {
     "metadata_sets": "app.models.research.MetadataSet",
     "thumbnail_concepts": "app.models.research.ThumbnailConcept",
     "youtube_uploads": "app.models.youtube.YouTubeUpload",
+    "experiments": "app.models.improvement.Experiment",
     "reply_drafts": "app.models.community.ReplyDraft",
     "comments": "app.models.community.Comment",
 }

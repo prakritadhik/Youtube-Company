@@ -200,7 +200,7 @@ def test_a_quiet_day_is_reported_as_quiet_and_nothing_is_invented(db):
     assert [x["phase"] for x in out["phases"]] == ["review", "research", "planning", "production", "quality", "publishing", "monitoring", "learning", "report"]
     for name in ("research", "planning", "production", "quality", "publishing"):
         assert p[name]["status"] == "nothing_to_do", name
-    assert p["monitoring"]["status"] == "unavailable" and "no YouTube channel is connected" in p["monitoring"]["summary"] and p["learning"]["status"] == "unavailable"
+    assert p["monitoring"]["status"] == "unavailable" and "no YouTube channel is connected" in p["monitoring"]["summary"] and p["learning"]["status"] == "nothing_to_do" and "No finished workflow" in p["learning"]["summary"]
     assert p["report"]["status"] == "done"
     with session_scope(write=False) as s:
         assert s.get(Report, p["report"]["executive_report_id"]).kind == ReportKind.EXECUTIVE.value

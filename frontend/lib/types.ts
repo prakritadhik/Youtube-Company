@@ -15,7 +15,7 @@ export interface TaskSummary {
   id: number; title: string; task_type: string; status: string; priority: number;
   channel: string | null; owner: string; owner_slug: string | null; depends_on: number[];
   blocker: string | null; attempts: number; evidence_count: number; review_notes: string | null;
-  created_at: string; updated_at: string; completed_at: string | null; board_version_used: number | null;
+  created_at: string; updated_at: string; completed_at: string | null; board_version_used: number | null; lessons_applied?: string[];
 }
 
 export interface GateIssue { code: string; message: string; waivable: boolean }
@@ -249,4 +249,33 @@ export interface CommentRow {
 export interface CommentsResponse {
   comments: CommentRow[];
   summary: { sentiment: { positive: number; negative: number; questions: number; needs_a_person: number; unclassified: number }; by_category: Record<string, number>; by_status: Record<string, number>; escalated_waiting: number; drafts_waiting: number; method: string };
+}
+
+// --- Phase 6: lessons, experiments and comparisons ----------------------------------------------------------------
+export interface ExperimentAnalysis {
+  conclusion: string; summary: string; suggested_decision: string; p_value: number | null; method?: string; smallest_possible_p?: number; looks: number; analysed_at: string;
+  control: { n: number; mean?: number; median?: number }; treatment: { n: number; mean?: number; median?: number }; difference?: number; relative_difference_percent?: number | null;
+  effect_size_d?: number | null; confidence: string; limitations: string[]; confounders: string[]; attrition: Record<string, { enrolled: number; complete: number }>;
+  baseline?: { status: string; n?: number; median?: number; reason?: string } | null;
+}
+export interface ExperimentVideoRow {
+  arm: string; video_id: number; title: string; status: string; value: number | null; reason: string | null; window?: { start: string; end: string }; basis: string | null;
+}
+export interface ExperimentView {
+  id: number; public_id: string; channel: string | null; title: string; hypothesis: string; change: string; status: string; metric: { metric: string; aggregate: string; window_days: number; higher_is_better: boolean };
+  metric_description: string; min_per_group: number; confounders: string[]; baseline: ExperimentAnalysis["baseline"]; board_entry: string | null; board_status: string | null; parent_id: number | null;
+  enrolled: Record<string, number>; decision: string | null; decision_note: string | null; decided_by: string | null; decided_at: string | null; created_at: string;
+  started_at: string | null; concluded_at: string | null; analysis: ExperimentAnalysis | null; limitations: string[];
+  videos?: ExperimentVideoRow[]; assignments?: { video_id: number; arm: string; assigned_at: string; draw: { basis: string } }[];
+}
+export interface ImprovementOverview {
+  lessons_by_status: Record<string, number>; experiments_by_status: Record<string, number>; unexamined_workflows: number; lessons: BoardEntry[]; experiments: ExperimentView[]; notes: string[];
+}
+export interface CompareRow {
+  video_id: number; title: string; status: string; value: number | null; reason: string | null; window?: { start: string; end: string }; rank?: number; versus_median_percent?: number;
+  experiment: string | null; arm: string | null; basis: string | null;
+}
+export interface CompareResponse {
+  channel: string; metric_description: string; videos: CompareRow[]; caveats: string[];
+  summary: { n: number; of: number; median?: number; mean?: number; min?: number; max?: number; note?: string };
 }

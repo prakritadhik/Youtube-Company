@@ -49,7 +49,7 @@ const problems = [];
     ["/organization", "Organization"], ["/board", "Company Intelligence Board"], ["/approvals", "Approval Center"],
     ["/rights", "Originality & Rights"], ["/reports", "Executive reports"], ["/settings", "Settings & control"],
     ["/diagnostics", "Diagnostics"], ["/plan", "Content plan"], ["/operations", "Operations"],
-    ["/performance", "Performance"], ["/comments", "Comments"],
+    ["/performance", "Performance"], ["/comments", "Comments"], ["/learning", "Learning"],
   ];
   for (const [path, heading] of pages) {
     await page.goto(BASE + path);
@@ -62,6 +62,12 @@ const problems = [];
   await page.getByText("Revenue is not collected").first().waitFor({ timeout: 15000 });
   await page.goto(BASE + "/comments");
   await page.getByText("No comments").first().waitFor({ timeout: 15000 });
+  await page.goto(BASE + "/learning");
+  await page.getByText("No lessons yet").first().waitFor({ timeout: 15000 });
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  await page.getByText("No experiments yet").first().waitFor({ timeout: 15000 });
+  await page.getByRole("tab", { name: "Compare videos" }).click();
+  await page.getByText("This compares videos; it is not an experiment").first().waitFor({ timeout: 15000 });
   await page.goto(BASE + "/plan");
   await page.getByRole("button", { name: "Propose an idea" }).click();
   await page.getByLabel("Title", { exact: true }).fill("Lantern Parade Birthday");
