@@ -5,7 +5,7 @@ _Last updated: 2026-10-26 · Branch `claude/sweet-hamilton-hvxkym`_
 ## Summary
 
 **Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging), 4 (YouTube integration, mock-tested
-only), 5 (performance data and comments, mock-tested only), 6 (lessons, experiments and comparisons), 7 (scheduler, daily cycle, alerts, health) and 8 (the AI brain)** are built and tested.
+only), 5 (performance data and comments, mock-tested only), 6 (lessons, experiments and comparisons), 7 (scheduler, daily cycle, alerts, health), 8 (the AI brain) and 9 (Connections and continuous integration)** are built and tested.
 None of the YouTube-dependent phases has touched the real YouTube, and no real experiment has run. The system can assemble, check and rights-screen a real video from local assets, plan content
 per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts.
 
@@ -19,6 +19,14 @@ build machine (6 model calls, one correction round, one video READY); not run on
 video, nothing reviewed submitted tasks, and the steps that record QA, rights and CEO verdicts, approve metadata and ask for approval existed only inside the demonstration command. A video could not actually be
 produced from the dashboard. The conductor now performs those steps for videos started with the AI company; *Start by hand* still creates only the video.
 
+**New in Phase 9, and the answer to "make it run properly anywhere":**
+* **Continuous integration on GitHub** (`.github/workflows/ci.yml`) installs the project from scratch on a clean **Linux** and a clean **Windows** machine on every push, then lints, runs the whole test suite, builds the
+  dashboard, starts the real API and worker processes (restart survival, and the AI company end to end with a stand-in `claude`), and runs the Windows installer (`setup.ps1`) exactly as you would. Getting it green on
+  Windows found and fixed four real faults that had passed on Linux (listed under "Faults found by running on a clean Windows machine" below).
+* **Connections page** (*Connections* in the dashboard): paste the ElevenLabs key and the Google OAuth client there instead of editing `.env`. Stored encrypted (the same key file as YouTube sign-in tokens), used at once by the API
+  and the worker without a restart, shown once as "saved" and never again, owner-only, audited without the value. A *Test* button makes one harmless read-only call (ElevenLabs account check). A saved key is **not** called working
+  until its test passes. Canva has no connection to make: its designs stay a manual step. YouTube still needs the Google Cloud setup (docs/YOUTUBE.md); only the final paste moved into the dashboard.
+
 It has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
 anything. The soundtrack is an instrumental with
 **no vocals** and there is no narration voice unless a provider is connected; a sung birthday song needs a music provider that is not connected. Search, trend, keyword and audience data
@@ -26,14 +34,15 @@ are **unavailable** (nothing is estimated), and titles and descriptions are plai
 
 | Phase | State | Notes |
 |---|---|---|
-| 1 Foundation | ✅ built and tested | Acceptance criteria met on Linux; see evidence below. Windows scripts untested. |
+| 1 Foundation | ✅ built and tested | Acceptance criteria met on Linux; the Windows installer and tests run green on a clean GitHub Windows machine (see evidence below), not yet on your PC. |
 | 2 Real video production | ✅ built and tested (local assets) | One validated demo video produced; sung music and AI art need providers; drafting is done by the AI brain (Phase 8) |
 | 3 Research and SEO | ✅ built and tested (no data source) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
 | 4 YouTube integration | 🟨 built, **mock-tested only** | Sign-in, identity confirmation, resumable upload, thumbnail, scheduling, read-back verification, quota ledger; needs your OAuth client and a first real run (docs/YOUTUBE.md) |
 | 5 Analytics and community | 🟨 built, **mock-tested only** | Daily collection of totals, daily figures and retention with source and time; unavailable figures carry YouTube's reason, never zero; comment retrieval with fixed English-only rules (`rules-v1`); template thank-yous for plain praise only; owner-approved replies, read back; Performance and Comments pages. Needs the Phase 4 Google setup plus the analytics and comments permissions (docs/ANALYTICS.md) |
 | 6 Management and improvement | ✅ built and tested (no real data yet) | Lessons mined from finished workflows and driven through the board by you; lessons recorded on later tasks; experiments (seeded random arms, no test before the planned sample, permutation test, your decision); video comparisons; a real learning phase in the daily cycle. No real experiment has run; no language-model narrative (docs/IMPROVEMENT.md) |
-| 7 Controlled autonomy | ✅ built and tested (restart-verified on Linux) | Persistent scheduler with catch-up, daily operating cycle, alerts, worker heartbeat, health checks, gated autonomous upload queueing; no e-mail/phone alerts; Windows run untested |
-| 8 The AI brain | ✅ built and tested (stand-in program + one real end-to-end run; not on Windows) | Claude Code on your computer drafts briefs, lyrics/scripts and ideas and assists manager review; a conductor carries a video to your approval and stops at your decisions; every call recorded with its prompt; daily allowance, plan-terms confirmation, connection test; AI Brain page (docs/AI_BRAIN.md) |
+| 7 Controlled autonomy | ✅ built and tested (restart-verified on Linux and on a clean GitHub Windows machine) | Persistent scheduler with catch-up, daily operating cycle, alerts, worker heartbeat, health checks, gated autonomous upload queueing; no e-mail/phone alerts |
+| 8 The AI brain | ✅ built and tested (stand-in program on Linux and on a clean GitHub Windows machine; one real end-to-end run on Linux; the real Claude Code has not run on Windows) | Claude Code on your computer drafts briefs, lyrics/scripts and ideas and assists manager review; a conductor carries a video to your approval and stops at your decisions; every call recorded with its prompt; daily allowance, plan-terms confirmation, connection test; AI Brain page (docs/AI_BRAIN.md) |
+| 9 Connections and CI | ✅ built and tested | Connections page (encrypted in-dashboard keys, read-only tests, honest states); GitHub Actions on Linux and Windows (install, lint, tests, dashboard build, real processes, the Windows installer); only ElevenLabs has a test, YouTube still needs its Google setup |
 
 ## Phase 1 acceptance criteria
 
@@ -175,7 +184,7 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **854 passed, 3 skipped** (the skipped are the opt-in live tests that use your Claude account; about 2 min with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **878 passed, 3 skipped** (the skipped are the opt-in live tests that use your Claude account; about 2 min with `-n 4`), run locally with FFmpeg 6.1 and again with FFmpeg 7.0.2 (the newer kind Windows installs) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
 | Frontend typecheck (`tsc --noEmit`) and production build | pass (18 routes, including `/performance`, `/comments`, `/learning` and `/ai`) |
@@ -185,7 +194,9 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 | Real processes, AI company (`python scripts/verify_ai_stack.py`: real API + worker + FFmpeg, a stand-in `claude`, driven only through the API) | **9 of 9 checks passed**: not ready until you confirm and set an allowance; connection test; start with the AI company; the worker's own housekeeping reviews and conducts; READY with the publication request pending; 4 recorded calls; every task COMPLETED by a manager |
 | Restart check (`python scripts/verify_restart.py`) after the housekeeping change | passed (8 of 8) |
 | Migration `0008` | `alembic check` clean; down/up/down cycle clean |
-| Clean-clone install via `scripts/setup.sh` | see "Install verification" below (verified at the end of Phase 1; not repeated for Phase 2) |
+| **GitHub Actions, clean Windows machine** (`windows-latest`, commit `9cb02b3`, run 40347409405) | **all 4 Windows jobs green**: `setup.ps1` installer + prerequisite check; dashboard typecheck and production build; the whole backend suite (878 passed, 3 skipped); the real API + worker processes (restart survival 8 of 8, the AI company end to end with a stand-in `claude.cmd`) |
+| GitHub Actions, clean Linux machine (`ubuntu-latest`, commit `70a01e6`, run 40349241934) | backend suite (878 passed, 3 skipped), lint and dashboard build green; the real-process job on Linux is the one CI result not yet confirmed at the time of writing (its FFmpeg install step stalled on the runner's package mirror in two runs; the step is now bounded and retried). The same two scripts pass locally on Linux |
+| Clean-clone install via `scripts/setup.sh` | see "Install verification" below |
 
 Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_settings`, `test_tasks`, `test_board`,
 `test_reports`, `test_gate_videos`, `test_finance_backup_runner`, `test_api`, `test_migrations_docs`, `test_config`,
@@ -194,6 +205,19 @@ Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_sett
 `test_youtube_connection`, `test_youtube_upload`, `test_youtube_selftest`, `test_api_youtube`,
 `test_ops_scheduler`, `test_ops_health_cycle`, `test_api_ops`; `scripts/verify_restart.py` is the live check.
 Mocks are used only in tests (no provider is called anywhere); the ElevenLabs client has only ever run against a mock transport.
+
+## Faults found by running on a clean Windows machine
+
+Everything below passed on Linux. Each was found by the GitHub Windows job, root-caused, fixed, and covered by a test that fails without the fix.
+
+| Fault | What it did | Fix |
+|---|---|---|
+| **Write endpoints committed after the response was sent** (FastAPI runs a dependency's exit code after the response by default) | The request right after sign-in could answer "Not signed in": the browser had the cookie before the session row was committed. It could also happen on Linux, under load | Every write endpoint commits before the response (`Depends(get_wdb, scope="function")`); `test_commit_before_response.py` counts the committed rows at the moment the response starts |
+| **Soundtrack true peak above the limit** | The Windows FFmpeg (7+) left `loudnorm` + AAC at up to +2.5 dBFS; the quality check correctly failed every video, so none reached READY | Rendering encodes the soundtrack first, **measures the encoded file's true peak**, takes level off and re-encodes (up to 4 passes) until it is at or below -1.0 dBFS, then builds the video with that exact audio. The quality check is unchanged and still the judge |
+| **A timed-out Claude Code call left its real process running** | On Windows the program is a `.cmd` launcher; stopping only the launcher left the real process (and the output pipes) alive | The program runs in its own process group and the whole tree is stopped on timeout (`taskkill /T` on Windows, `killpg` elsewhere) |
+| **The launcher served an old dashboard after an update** | New pages (such as Connections) returned 404 until someone rebuilt by hand | The launcher rebuilds when any dashboard source is newer than the build |
+
+Also changed because of CI: the test database is migrated once per run and copied per test (the Windows suite was too slow), per-test timeouts, and the Linux FFmpeg install is bounded and retried (a stalled package mirror once hung a job for over ten minutes).
 
 ## Implemented (Phase 1)
 
@@ -281,8 +305,8 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 * **Word-based screening.** Distinctness and title accuracy compare words, not meaning. The thumbnail gate rule is not enforced yet
   (an approved concept is advisory until an image provider makes thumbnails).
 * The platform limits used by the metadata checks are *reported* values; Phase 4 confirms them against the live API.
-* **Windows scripts are untested on Windows** (`setup.ps1`, `start.bat`, etc.). The Python code is cross-platform
-  but only exercised on Linux.
+* **Windows is verified on GitHub's clean Windows machine, not on your PC.** `setup.ps1`, the dashboard build, the whole test suite and the real API + worker processes pass there. Still unverified on Windows:
+  `start.bat` with a double-click, the real Claude Code program (its `.cmd` launcher is imitated by a stand-in in CI), real FFmpeg-from-winget on your machine, and anything that needs your sign-ins.
 * **Alerts are in the dashboard and CLI only.** No e-mail, SMS or phone notification is configured. A stopped worker is noticed by the dashboard (banner within two minutes) and not by anything outside it.
 * The scheduler runs inside the worker, so it only works while the launcher is running; there is no Windows service or Task Scheduler entry yet.
 * The reporting chain is deterministic. The AI brain does not write reports, lessons or experiment plans. Only the creative director, the script and lyrics writer, the content strategist
@@ -298,7 +322,7 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 
 ## Needs you (owner decisions / credentials)
 
-1. **Windows run-through:** run `scripts\windows\setup.ps1` then `start.bat` and tell me what fails.
+1. **Windows run-through on your PC:** run `scripts\windows\setup.ps1` then `start.bat` and tell me what fails (the same steps pass on GitHub's clean Windows machine, so a failure would be specific to your PC).
 2. **(Optional now, needed for Phase 3 to be more than templates)** a source of search/trend data you are allowed to use
    (for example an export from a tool you pay for) or the willingness to record observations by hand on ideas.
 3. **Provider decisions** (each needs a key, your confirmation of the plan's terms in Settings → Providers, and your
@@ -306,11 +330,11 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
    * **the AI brain (Claude Code on this computer, no key):** install Claude Code and sign in; Settings → Providers → confirm that your plan allows it; Settings → limits: set *Language-model requests per day* and
      *Provider requests per day* above 0 (a video needs about 4 to 8); AI Brain → Run the connection test; then Content Plan → Start with the AI company. Tell me what the first run does on **Windows** and what the
      real sign-in or usage-limit messages say;
-   * ElevenLabs: an API key and a check that your plan's terms allow commercial use via the API. Music is the route to a
+   * ElevenLabs: an API key (paste it under *Connections*, then press *Test*) and a check that your plan's terms allow commercial use via the API. Music is the route to a
      *sung* song; text-to-speech is for narration only;
    * an image source (provider, licensed stock, or your own artwork) to replace the procedural placeholders.
 4. **Phase 4 (blocks every real upload):** the Google Cloud setup in [docs/YOUTUBE.md](docs/YOUTUBE.md): project, YouTube Data API, consent
-   screen, a Desktop OAuth client in `.env`, your confirmation of the API terms, signing in to each channel and answering whether it is made
+   screen, a Desktop OAuth client (paste it under *Connections*), your confirmation of the API terms, signing in to each channel and answering whether it is made
    for kids, Approval-first mode, then `youtube-selftest`.
 5. **Phase 5 (performance data and comments):** also enable *YouTube Analytics API* in the same Google Cloud project, then press *Allow* next to
    *Performance data* and *Comments* for each channel in Settings → YouTube, and run *Collect performance now* once. If you want automatic thank-yous, choose
@@ -323,6 +347,7 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 
 ## Install verification
 
-Re-run after Phase 8 on Linux from a **clean clone of the pushed branch** (an empty directory, nothing local, commit `e14e008`): `scripts/setup.sh` (about 66 s, including the dashboard
-build) → `python -m pytest -n 4` (**854 passed, 3 skipped**) → `launcher.py --check` (all prerequisites present). The browser smoke test and the real-process checks were run on the working tree that became that commit. The first install check (end of Phase 1) found and fixed two real bugs the unit tests had missed: comments after values in `.env.example` crashed the first start, and blank
-placeholder API keys were reported as "configured"; both have regression tests. The same path on **Windows has not been run** (that is the first item under "Needs you").
+Re-run after Phase 9 on Linux from a **clean clone of the pushed branch** (an empty directory, nothing local, commit `70a01e6`): `scripts/setup.sh` (about 99 s, including the dashboard
+build) → `python -m pytest -n 4` (**878 passed, 3 skipped**) → `launcher.py --check` (all prerequisites present). On a clean **Windows** machine (GitHub's `windows-latest`, commits `9cb02b3` and `70a01e6`) the same path
+ran green: `scripts\windows\setup.ps1` → prerequisite check, the dashboard build, the whole suite, restart survival and the AI company end to end. That is a fresh GitHub machine, not your PC. The first install check (end of Phase 1) found and fixed two real bugs the unit tests had missed:
+comments after values in `.env.example` crashed the first start, and blank placeholder API keys were reported as "configured"; both have regression tests. The Windows run found four more (see "Faults found by running on a clean Windows machine").
