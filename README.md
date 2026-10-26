@@ -101,9 +101,14 @@ node e2e/smoke.cjs                             # browser smoke test (needs Playw
 
 ## Configuration
 
-Copy [.env.example](.env.example) to `.env`. Provider keys are placeholders; they are not used until the phase that
-needs them. Subscriptions (Claude Pro, ElevenLabs Pro, Canva Pro) do not automatically include API access or
-commercial rights — [PROVIDERS.md](docs/PROVIDERS.md) lists what must be verified before each is enabled.
+**Connecting services:** open **Connections** in the dashboard. Paste the ElevenLabs key or the Google OAuth client there (stored encrypted, used at once, no restart,
+never shown again); each service has a plain list of steps and, where one exists, a read-only Test button. Nothing needs editing in `.env`; its keys still work and are
+the fallback. Subscriptions (Claude Pro, ElevenLabs Pro, Canva Pro) do not automatically include API access or commercial rights —
+[PROVIDERS.md](docs/PROVIDERS.md) lists what must be verified before each is enabled. Having the code on GitHub does not connect any account: each connection needs
+*your* login or key, which only you can create.
+
+**Proof that it runs on clean machines:** every push is installed, linted, tested, built and run (real API and worker processes) on **Linux and Windows** by GitHub
+(`.github/workflows/ci.yml`; see the Actions tab).
 
 ## Roadmap
 

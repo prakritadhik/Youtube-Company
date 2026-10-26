@@ -17,12 +17,9 @@ you must do, and what your first real run will confirm or correct.
      *In production* (an unverified personal app shows an "unverified app" warning screen) is reported to avoid the expiry. Check
      Google's current wording before relying on either.
 3. **OAuth client.** *Credentials → Create credentials → OAuth client ID → Application type: **Desktop app***. Copy the client ID and
-   client secret into `.env` in this folder:
-   ```
-   GOOGLE_OAUTH_CLIENT_ID=...apps.googleusercontent.com
-   GOOGLE_OAUTH_CLIENT_SECRET=...
-   ```
-   Never commit the downloaded JSON file or `.env`. Restart the app (`python launcher.py`).
+   client secret into the dashboard: **Connections → YouTube (Google)**, paste each and press *Save*. They are stored encrypted, used at once
+   (no restart) and never shown again. (Editing `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` in `.env` still works; a value saved in the
+   dashboard wins.) Never commit the downloaded JSON file or `.env`.
 4. **Terms.** In *Settings → Providers → YouTube Data/Analytics API* confirm that you have read the YouTube API Services Terms and
    that your use complies. The app refuses to upload until you do (and the CEO cannot do it for you).
 5. **Connect each channel.** *Settings → YouTube → Connect to YouTube*. Sign in with the Google account that **manages that channel**

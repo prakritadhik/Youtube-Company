@@ -51,9 +51,16 @@ class FakeClaude:
     def __init__(self, folder: Path):
         self.dir = folder
         self.dir.mkdir(parents=True, exist_ok=True)
-        self.path = self.dir / "claude"
-        self.path.write_text(SCRIPT.replace("{python}", sys.executable))
-        self.path.chmod(self.path.stat().st_mode | stat.S_IEXEC)
+        body = SCRIPT.replace("{python}", sys.executable)
+        if os.name == "nt":  # the real program is a .cmd file on Windows, so the stand-in is too (same way of starting it, same quoting)
+            impl = self.dir / "claude_standin.py"
+            impl.write_text(body)
+            self.path = self.dir / "claude.cmd"
+            self.path.write_text(f'@echo off\r\n"{sys.executable}" "{impl}" %*\r\n')
+        else:
+            self.path = self.dir / "claude"
+            self.path.write_text(body)
+            self.path.chmod(self.path.stat().st_mode | stat.S_IEXEC)
         os.environ["FAKE_CLAUDE_DIR"] = str(self.dir)
         self.set()
 
