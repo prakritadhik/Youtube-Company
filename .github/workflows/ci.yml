@@ -33,7 +33,18 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - name: FFmpeg (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          # the runner's package mirror occasionally stalls; bound each attempt and retry instead of hanging the job
+          for attempt in 1 2 3; do
+            if timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+               && timeout 300 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y ffmpeg; then
+              exit 0
+            fi
+            echo "attempt $attempt failed; retrying"; sleep 10
+          done
+          exit 1
       - name: FFmpeg (Windows)
         if: runner.os == 'Windows'
         run: choco install ffmpeg -y --no-progress
@@ -85,7 +96,18 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - name: FFmpeg (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          # the runner's package mirror occasionally stalls; bound each attempt and retry instead of hanging the job
+          for attempt in 1 2 3; do
+            if timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+               && timeout 300 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y ffmpeg; then
+              exit 0
+            fi
+            echo "attempt $attempt failed; retrying"; sleep 10
+          done
+          exit 1
       - name: FFmpeg (Windows)
         if: runner.os == 'Windows'
         run: choco install ffmpeg -y --no-progress
