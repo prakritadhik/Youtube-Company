@@ -191,6 +191,15 @@ def main() -> int:
             return pr if pr["step"] in ("publication_approval", "stopped", "task_stuck", "corrections", "rights_decision", "brain_unavailable") else None  # type: ignore[index]
 
         end = wait_for(progress, "the video to reach a decision of yours", 420)
+        if end["step"] != "publication_approval":  # say exactly what stopped it, so a failure on someone else's machine can be diagnosed from the log
+            detail = api.call("GET", f"/api/videos/{vid}")
+            print("The video stopped at:", end["step"], "-", end["detail"])  # type: ignore[index]
+            for c in ((detail.get("qa") or {}).get("checks") or []):  # type: ignore[union-attr]
+                if c.get("status") in ("fail", "warn"):
+                    print(f"  QA {c.get('status').upper()}: {c.get('id')} - {c.get('detail')} -> {c.get('correction')}")
+            for t in detail.get("tasks", []):  # type: ignore[union-attr]
+                if t["status"] not in ("COMPLETED",):
+                    print(f"  task {t['id']} {t['task_type']} is {t['status']}: {t.get('blocker') or ''}")
         results.append(("the video reaches 'waiting for your approval to publish'", end["step"] == "publication_approval", end["detail"]))  # type: ignore[index]
         v = api.call("GET", f"/api/videos/{vid}")
         results.append(("it is READY, QA passed, rights PASS, CEO verified", (v["stage"], v["qa_passed"], v["originality_status"], v["ceo_rights_verified"]) == ("READY", True, "PASS", True), str((v["stage"], v["originality_status"]))))  # type: ignore[index]
