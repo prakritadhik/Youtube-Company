@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 from app.config import get_settings
+from app.services import credentials
 
 
 def _run(cmd: list[str]) -> str | None:
@@ -72,8 +73,8 @@ def inspect() -> dict[str, Any]:
         },
         "ffmpeg_h264_encoder": bool(encoders is not None),
         "providers_configured": {
-            "anthropic": s.anthropic_api_key is not None, "elevenlabs": s.elevenlabs_api_key is not None,
-            "google_oauth_client": bool(s.google_oauth_client_id) and s.google_oauth_client_secret is not None,
+            "anthropic": s.anthropic_api_key is not None, "elevenlabs": bool(credentials.get("elevenlabs_api_key")),
+            "google_oauth_client": bool(credentials.get("google_oauth_client_id")) and bool(credentials.get("google_oauth_client_secret")),
         },
         "data_dir": str(s.data_dir),
     }

@@ -17,6 +17,7 @@ from app.api import (
     routes_ai,
     routes_auth,
     routes_community,
+    routes_connections,
     routes_control,
     routes_diagnostics,
     routes_executive,
@@ -40,6 +41,7 @@ from app.research import thumbs as thumbs_svc
 from app.security import redaction
 from app.security.permissions import PermissionDenied
 from app.services import approvals, board, control, evidence, finance, registry, reports, settings, tasks, videos
+from app.services import credentials as credentials_svc
 from app.services import gate as gate_svc
 from app.storage import UnsafePath
 from app.youtube import connection as conn_svc
@@ -77,6 +79,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 def create_app() -> FastAPI:
     s = get_settings()
     redaction.register_secrets(s.secret_values())
+    credentials_svc.register_all()
     redaction.install_log_redaction()
     registry.load()
 
@@ -96,7 +99,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityMiddleware, allowed_origins=origins, limiter=RateLimiter(s.api_rate_limit_per_minute))
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in s.allowed_hosts.split(",") if h.strip()])
 
-    for r in (routes_ai.router, routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router,
+    for r in (routes_ai.router, routes_connections.router, routes_auth.router, routes_executive.router, routes_control.router, routes_diagnostics.router, routes_production.router,
               routes_research.router, routes_youtube.router, routes_ops.router, routes_community.router, routes_improvement.router):
         app.include_router(r)
 
@@ -134,7 +137,7 @@ def create_app() -> FastAPI:
         (control.ExternalActionBlocked, 409), (ideas_svc.IdeaError, 409), (notes_svc.ResearchError, 422), (seo_svc.SeoError, 409),
         (thumbs_svc.ThumbError, 409),
         (conn_svc.YouTubeError, 409), (upload_svc.UploadError, 409), (quota_svc.QuotaExceeded, 409),
-        (schedule_svc.ScheduleError, 409), (ai_conductor.ConductorError, 409), (ReplyError, 409), (experiments_svc.ExperimentError, 409), (lessons_svc.LessonError, 409), (measure_svc.MeasureError, 422),
+        (schedule_svc.ScheduleError, 409), (ai_conductor.ConductorError, 409), (credentials_svc.CredentialError, 422), (ReplyError, 409), (experiments_svc.ExperimentError, 409), (lessons_svc.LessonError, 409), (measure_svc.MeasureError, 422),
     ):
         app.add_exception_handler(exc_type, err(code))
     app.add_exception_handler(Exception, unexpected)

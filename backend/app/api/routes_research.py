@@ -120,7 +120,7 @@ def idea_detail(idea_id: int, db: Session = Depends(get_db), auth: Auth = Depend
 
 
 @router.post("/ideas")
-def propose_idea(body: IdeaIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.TASK_CREATE))):
+def propose_idea(body: IdeaIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.TASK_CREATE))):
     idea = ideas.propose(db, auth.actor, body.channel, title=body.title, concept=body.concept, audience=body.audience, rationale=body.rationale,
                          audience_relevance=body.audience_relevance, est_cost_usd=body.est_cost_usd, est_production_minutes=body.est_production_minutes,
                          requires=body.requires, risks=body.risks)
@@ -129,23 +129,23 @@ def propose_idea(body: IdeaIn, db: Session = Depends(get_wdb), auth: Auth = Depe
 
 
 @router.post("/ideas/{idea_id}/assess")
-def assess_idea(idea_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.TASK_CREATE))):
+def assess_idea(idea_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.TASK_CREATE))):
     return _idea_detail(db, ideas.assess(db, auth.actor, idea_id))
 
 
 @router.post("/ideas/{idea_id}/decision")
-def decide_idea(idea_id: int, body: DecisionIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def decide_idea(idea_id: int, body: DecisionIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return _idea_detail(db, ideas.decide(db, auth.actor, idea_id, approve=body.approve, note=body.note, planned_for=body.planned_for))
 
 
 @router.post("/ideas/{idea_id}/start")
-def start_idea(idea_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def start_idea(idea_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     v = ideas.start_video(db, auth.actor, idea_id)
     return {"video_id": v.id, "stage": v.stage}
 
 
 @router.post("/ideas/{idea_id}/notes")
-def add_idea_note(idea_id: int, body: NoteIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.TASK_CREATE))):
+def add_idea_note(idea_id: int, body: NoteIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.TASK_CREATE))):
     n = notes.add_note(db, auth.actor, kind=body.kind, retrieved_at=body.retrieved_at or utcnow(), method="owner_provided", url=body.url, title=body.title,
                        publisher=body.publisher, text=body.text, supports=body.supports, note=body.note, figures=[f.model_dump() for f in body.figures],
                        idea_id=idea_id)
@@ -190,12 +190,12 @@ def packaging(video_id: int, db: Session = Depends(get_db), auth: Auth = Depends
 
 
 @router.post("/videos/{video_id}/metadata/generate")
-def generate_metadata(video_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def generate_metadata(video_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return seo.serialize(seo.generate(db, auth.actor, video_id))
 
 
 @router.post("/videos/{video_id}/metadata")
-def create_metadata(video_id: int, body: MetadataIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def create_metadata(video_id: int, body: MetadataIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     ms = seo.create_set(db, auth.actor, video_id, chosen_title=body.chosen_title, description=body.description, tags=body.tags, hashtags=body.hashtags,
                         chapters=body.chapters, playlists=body.playlists, pinned_comment=body.pinned_comment, call_to_action=body.call_to_action,
                         recommendation=body.recommendation, title_candidates=body.title_candidates, generated_by="manual")
@@ -203,21 +203,21 @@ def create_metadata(video_id: int, body: MetadataIn, db: Session = Depends(get_w
 
 
 @router.post("/metadata/{set_id}/check")
-def check_metadata(set_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def check_metadata(set_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return seo.serialize(seo.check(db, auth.actor, set_id))
 
 
 @router.post("/metadata/{set_id}/approve")
-def approve_metadata(set_id: int, body: ApprovalIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def approve_metadata(set_id: int, body: ApprovalIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return seo.serialize(seo.approve(db, auth.actor, set_id, note=body.note, waive=body.waive))
 
 
 @router.post("/videos/{video_id}/thumbnail-concepts")
-def create_concept(video_id: int, body: ConceptIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def create_concept(video_id: int, body: ConceptIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return thumbs.serialize(thumbs.create(db, auth.actor, video_id, overlay_text=body.overlay_text, composition=body.composition, palette=body.palette,
                                           relation_to_content=body.relation_to_content))
 
 
 @router.post("/thumbnail-concepts/{concept_id}/approve")
-def approve_concept(concept_id: int, body: ApprovalIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def approve_concept(concept_id: int, body: ApprovalIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return thumbs.serialize(thumbs.approve(db, auth.actor, concept_id, note=body.note, waive=body.waive))

@@ -77,3 +77,29 @@ class ElevenLabsClient:
         if not r.content:
             raise ProviderError("ElevenLabs returned an empty audio response")
         return Speech(r.content, r.headers.get("request-id") or r.headers.get("x-request-id"), len(text), model_id)
+
+
+def check_account(client: ElevenLabsClient) -> dict:
+    """Prove a key works without generating anything (no characters are used): read the account, or the voice list if the key may not read the account.
+
+    Unconfirmed against a live account (no key was available when this was written): the account route and its fields follow the public API.
+    A field the service does not return is reported as None (unavailable), never as zero.
+    """
+    r = client._client.get("/v1/user")
+    if r.status_code == 200:
+        sub = (r.json() or {}).get("subscription") or {}
+        return {"ok": True, "limited": False, "tier": sub.get("tier"), "characters_used": sub.get("character_count"), "character_limit": sub.get("character_limit"),
+                "via": "GET /v1/user"}
+    if r.status_code in (401, 403):
+        try:
+            status = ((r.json() or {}).get("detail") or {}).get("status")
+        except ValueError:
+            status = None
+        if status == "missing_permissions":  # a restricted key: valid, but not allowed to read the account
+            v = client._client.get("/v1/voices")
+            if v.status_code == 200:
+                return {"ok": True, "limited": True, "tier": None, "characters_used": None, "character_limit": None, "via": "GET /v1/voices",
+                        "note": "The key works, but it is restricted: it cannot read your account or usage. Text-to-speech needs its permission switched on in ElevenLabs."}
+        raise AuthError("ElevenLabs rejected the key. Check that you copied the whole key and that it has not been deleted or restricted.", r.status_code)
+    client._check(r)
+    return {"ok": False, "via": "GET /v1/user"}

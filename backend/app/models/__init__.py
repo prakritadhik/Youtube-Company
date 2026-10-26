@@ -4,6 +4,7 @@ from app.models.audit import AuditEvent
 from app.models.auth import LoginAttempt, User, UserSession
 from app.models.board import BoardAcknowledgement, BoardEntry, BoardEntryVersion, BoardRelease
 from app.models.community import Comment, Metric, MetricGap, ReplyDraft, RetentionPoint
+from app.models.credentials import Credential
 from app.models.finance import UsageRecord
 from app.models.improvement import Experiment, ExperimentVideo, WorkflowLesson
 from app.models.ops import Alert, Schedule, WorkerHeartbeat
@@ -18,6 +19,6 @@ from app.models.youtube import QuotaEntry, YouTubeAuthState, YouTubeConnection, 
 
 __all__ = [
     "Agent", "AiGeneration", "Alert", "ApprovalRequest", "Asset", "AuditEvent", "BoardAcknowledgement", "BoardEntry",
-    "BoardEntryVersion", "BoardRelease", "Channel", "Comment", "ContentIdea", "CreativeBrief", "Department", "Evidence", "Experiment", "ExperimentVideo", "LoginAttempt", "Metric", "MetricGap", "MetadataSet", "OriginalityReview", "QAReport", "QuotaEntry",
+    "BoardEntryVersion", "BoardRelease", "Channel", "Comment", "ContentIdea", "Credential", "CreativeBrief", "Department", "Evidence", "Experiment", "ExperimentVideo", "LoginAttempt", "Metric", "MetricGap", "MetadataSet", "OriginalityReview", "QAReport", "QuotaEntry",
     "Report", "ReplyDraft", "ResearchNote", "RetentionPoint", "Schedule", "ScriptVersion", "SettingRow", "SourceRecord", "Task", "ThumbnailConcept", "TaskDependency", "UsageRecord", "User", "UserSession", "Video", "WorkerHeartbeat", "WorkflowLesson", "YouTubeAuthState", "YouTubeConnection", "YouTubeUpload",
 ]

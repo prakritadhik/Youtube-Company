@@ -138,9 +138,13 @@ def wait_for(cond, what: str, timeout: float):
 
 def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="ytc-ai-"))
-    fake = tmp / ("claude.py" if IS_WINDOWS else "claude")
-    fake.write_text(FAKE.replace("{python}", sys.executable))
-    if not IS_WINDOWS:
+    impl = tmp / "claude_standin.py"
+    impl.write_text(FAKE.replace("{python}", sys.executable))
+    if IS_WINDOWS:  # the real Claude Code is a .cmd file on Windows, so the stand-in is too: this exercises the same way of starting it
+        fake = tmp / "claude.cmd"
+        fake.write_text(f'@echo off\r\n"{sys.executable}" "{impl}" %*\r\n')
+    else:
+        fake = impl
         fake.chmod(0o755)
     env = {**os.environ, "YTC_DATA_DIR": str(tmp / "data"), "YTC_PORT": PORT, "YTC_FRONTEND_ORIGIN": "http://localhost:3000", "VERIFY_PW": PW,
            "YTC_CLAUDE_CODE_BIN": str(fake)}

@@ -146,7 +146,12 @@ def get_db() -> Iterator[Session]:
 
 
 def get_wdb() -> Iterator[Session]:
-    """FastAPI dependency for requests that write (takes the write lock up front)."""
+    """FastAPI dependency for requests that write (takes the write lock up front).
+
+    Always used as ``Depends(get_wdb, scope="function")``: with the default scope FastAPI runs the code after ``yield`` (the commit) only
+    *after* the response has been sent, so a fast client's next request could arrive before its own write was saved (for example the very next
+    request after sign-in answering "Not signed in"). ``tests/test_commit_before_response.py`` guards this.
+    """
     s = new_session(write=True)
     try:
         yield s

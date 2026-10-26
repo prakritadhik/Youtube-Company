@@ -28,7 +28,7 @@ def _viewed(db: Session, auth: Auth, request: Request, **details: Any) -> None:
 
 
 @router.get("/tasks")
-def list_tasks(request: Request, status: str | None = None, limit: int = 100, db: Session = Depends(get_wdb),
+def list_tasks(request: Request, status: str | None = None, limit: int = 100, db: Session = Depends(get_wdb, scope="function"),
                auth: Auth = Depends(require(P.DIAG_READ))):
     q = select(Task).order_by(Task.id.desc()).limit(min(limit, 500))
     if status:
@@ -38,7 +38,7 @@ def list_tasks(request: Request, status: str | None = None, limit: int = 100, db
 
 
 @router.get("/tasks/{task_id}")
-def get_task(task_id: int, request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def get_task(task_id: int, request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     t = db.get(Task, task_id)
     if t is None:
         raise HTTPException(404, "Task not found.")
@@ -47,7 +47,7 @@ def get_task(task_id: int, request: Request, db: Session = Depends(get_wdb), aut
 
 
 @router.get("/reports")
-def list_reports(request: Request, kind: str | None = None, limit: int = 50, db: Session = Depends(get_wdb),
+def list_reports(request: Request, kind: str | None = None, limit: int = 50, db: Session = Depends(get_wdb, scope="function"),
                  auth: Auth = Depends(require(P.DIAG_READ))):
     q = select(Report).order_by(Report.id.desc()).limit(min(limit, 200))
     if kind:
@@ -58,7 +58,7 @@ def list_reports(request: Request, kind: str | None = None, limit: int = 50, db:
 
 
 @router.get("/reports/{report_id}")
-def get_report(report_id: int, request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def get_report(report_id: int, request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     r = db.get(Report, report_id)
     if r is None:
         raise HTTPException(404, "Report not found.")
@@ -67,13 +67,13 @@ def get_report(report_id: int, request: Request, db: Session = Depends(get_wdb),
 
 
 @router.get("/board")
-def full_board(request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def full_board(request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     _viewed(db, auth, request)
     return board.poster(db, owner_view=False)
 
 
 @router.get("/board/{public_id}")
-def board_entry(public_id: str, request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def board_entry(public_id: str, request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     e = db.scalar(select(BoardEntry).where(BoardEntry.public_id == public_id))
     if e is None:
         raise HTTPException(404, "Entry not found.")
@@ -82,7 +82,7 @@ def board_entry(public_id: str, request: Request, db: Session = Depends(get_wdb)
 
 
 @router.get("/evidence/{evidence_id}")
-def get_evidence(evidence_id: int, request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def get_evidence(evidence_id: int, request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     ev = db.get(Evidence, evidence_id)
     if ev is None:
         raise HTTPException(404, "Evidence not found.")
@@ -91,7 +91,7 @@ def get_evidence(evidence_id: int, request: Request, db: Session = Depends(get_w
 
 
 @router.get("/audit")
-def audit_log(request: Request, action: str | None = None, limit: int = 200, db: Session = Depends(get_wdb),
+def audit_log(request: Request, action: str | None = None, limit: int = 200, db: Session = Depends(get_wdb, scope="function"),
               auth: Auth = Depends(require(P.DIAG_READ))):
     q = select(AuditEvent).order_by(AuditEvent.id.desc()).limit(min(limit, 1000))
     if action:
@@ -104,19 +104,19 @@ def audit_log(request: Request, action: str | None = None, limit: int = 200, db:
 
 
 @router.get("/audit/verify")
-def verify_audit(request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def verify_audit(request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     _viewed(db, auth, request)
     return audit.verify_chain(db)
 
 
 @router.get("/environment")
-def environment(request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def environment(request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     _viewed(db, auth, request)
     return {"environment": envcheck.inspect(), "backups": backup.list_backups()}
 
 
 @router.post("/backup")
-def make_backup(request: Request, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SYSTEM_MAINTENANCE))):
+def make_backup(request: Request, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SYSTEM_MAINTENANCE))):
     try:
         info = backup.create_backup("manual")
     except backup.BackupError as e:

@@ -21,7 +21,7 @@ def get_settings_all(db: Session = Depends(get_db), auth: Auth = Depends(require
 
 
 @router.put("/settings/{key}")
-def put_setting(key: str, body: SettingValue, db: Session = Depends(get_wdb),
+def put_setting(key: str, body: SettingValue, db: Session = Depends(get_wdb, scope="function"),
                 auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     try:
         value = settings_svc.set_value(db, auth.actor, key, body.value)
@@ -37,12 +37,12 @@ def control_status(db: Session = Depends(get_db), auth: Auth = Depends(require(P
 
 
 @router.post("/control/pause")
-def pause(body: PauseRequest, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.CONTROL_PAUSE))):
+def pause(body: PauseRequest, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.CONTROL_PAUSE))):
     return control.pause(db, auth.actor, body.reason)
 
 
 @router.post("/control/resume")
-def resume(body: ResumeRequest, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.CONTROL_RESUME))):
+def resume(body: ResumeRequest, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.CONTROL_RESUME))):
     control.resume(db, auth.actor, body.note)
     return {"ok": True}
 

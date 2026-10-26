@@ -13,7 +13,6 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.config import get_settings
 from app.db import session_scope
 from app.enums import CostKind
 from app.models.production import Asset
@@ -23,7 +22,7 @@ from app.production.pipeline import _role_actor, adir
 from app.providers import base as providers
 from app.providers.elevenlabs import AuthError, ElevenLabsClient, ProviderError, RateLimited
 from app.security.permissions import Actor
-from app.services import finance
+from app.services import credentials, finance
 from app.services import settings as settings_svc
 from app.worker.runner import BlockedError, HandlerResult, NonRetryableError, TaskContext, handler
 
@@ -63,7 +62,7 @@ def generate_narration(ctx: TaskContext) -> HandlerResult:
             return HandlerResult(result={"asset_id": prior.id, "reused": True, "note": "this script was already narrated; nothing was billed again"},
                                  evidence=[{"kind": "file", "ref": prior.path, "note": "existing narration"}])
         providers.require_ready(db, "elevenlabs", "speech.tts", category="audio", video_id=ctx.video_id)
-        key = get_settings().elevenlabs_api_key.get_secret_value()  # type: ignore[union-attr]
+        key = credentials.get("elevenlabs_api_key", db) or ""
         att = settings_svc.get(db, "provider_attestations").get("elevenlabs", {})
     client = client_factory(key)
     try:

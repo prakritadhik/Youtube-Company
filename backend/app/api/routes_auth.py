@@ -46,7 +46,7 @@ def status(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/bootstrap")
-def bootstrap(body: Credentials, request: Request, response: Response, db: Session = Depends(get_wdb)):
+def bootstrap(body: Credentials, request: Request, response: Response, db: Session = Depends(get_wdb, scope="function")):
     """First-run owner creation. Works once, from this computer only."""
     host = client_ip(request)
     try:
@@ -72,7 +72,7 @@ def bootstrap(body: Credentials, request: Request, response: Response, db: Sessi
 
 
 @router.post("/login")
-def login(body: Credentials, request: Request, response: Response, db: Session = Depends(get_wdb)):
+def login(body: Credentials, request: Request, response: Response, db: Session = Depends(get_wdb, scope="function")):
     ip = client_ip(request)
     try:
         user = sessions.authenticate(db, body.username, body.password, ip)
@@ -100,7 +100,7 @@ def logout(request: Request, response: Response, auth: Auth = Depends(require_si
 
 
 @router.post("/change-password")
-def change_password(body: PasswordChange, db: Session = Depends(get_wdb), auth: Auth = Depends(require_signed_in)):
+def change_password(body: PasswordChange, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require_signed_in)):
     user = db.get(User, auth.actor.user_id)
     assert user is not None
     if not passwords.verify_password(body.current_password, user.password_hash):
@@ -116,7 +116,7 @@ def change_password(body: PasswordChange, db: Session = Depends(get_wdb), auth: 
 
 
 @router.post("/users")
-def create_user(body: NewUser, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.USERS_MANAGE))):
+def create_user(body: NewUser, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.USERS_MANAGE))):
     try:
         passwords.validate_password_strength(body.password)
     except passwords.WeakPassword as e:

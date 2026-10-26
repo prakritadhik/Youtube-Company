@@ -55,7 +55,7 @@ def youtube_status(db: Session = Depends(get_db), auth: Auth = Depends(require(P
 
 
 @router.post("/youtube/{channel}/connect")
-def connect(channel: str, body: ConnectIn | None = None, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def connect(channel: str, body: ConnectIn | None = None, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     s = get_settings()
     # localhost (not 127.0.0.1): the browser's session cookie belongs to the host name the dashboard was opened with
     return {"url": conn_svc.begin(db, auth.actor, channel, f"http://localhost:{s.port}", tuple(body.groups) if body else ())}
@@ -75,7 +75,7 @@ def callback(state: str = "", code: str = "", error: str = "", auth: Auth = Depe
 
 
 @router.post("/youtube/{channel}/confirm")
-def confirm(channel: str, body: ConfirmIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def confirm(channel: str, body: ConfirmIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     c = conn_svc.confirm(db, auth.actor, channel, google_channel_id=body.google_channel_id, made_for_kids=body.made_for_kids, category_id=body.category_id)
     return conn_svc.serialize(c)
 
@@ -95,10 +95,10 @@ def uploads(video_id: int, db: Session = Depends(get_db), auth: Auth = Depends(r
 
 
 @router.post("/videos/{video_id}/upload")
-def queue_upload(video_id: int, body: UploadIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def queue_upload(video_id: int, body: UploadIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return upload.serialize(upload.prepare(db, auth.actor, video_id, privacy=body.privacy, publish_at=body.publish_at))
 
 
 @router.post("/youtube/uploads/{upload_id}/abandon")
-def abandon_upload(upload_id: int, body: NoteIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def abandon_upload(upload_id: int, body: NoteIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     return upload.serialize(upload.abandon(db, auth.actor, upload_id, body.note))

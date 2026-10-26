@@ -13,9 +13,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
 from app.providers import claude_code
-from app.services import control, finance
+from app.services import control, credentials, finance
 from app.services import settings as settings_svc
 
 
@@ -97,7 +96,7 @@ REGISTRY: dict[str, Provider] = {
                     note="needs the analytics permission on the channel; tested against a mock Google"),
          Capability("youtube.comments", "Read comments and post owner-approved replies, each read back to confirm", True,
                     note="needs the comments permission on the channel; tested against a mock Google")),
-        docs="docs/YOUTUBE.md",
+        docs="docs/YOUTUBE.md", extra={"also_needs": ("google_oauth_client_id",)},
     ),
     "canva": Provider(
         "canva", "Canva", False, None, False, None,
@@ -107,11 +106,16 @@ REGISTRY: dict[str, Provider] = {
 }
 
 
-def _key_present(p: Provider) -> bool:
+def _missing_credentials(db: Session, p: Provider) -> list[str]:
+    """Names of the keys this provider still lacks (a key saved in the dashboard or set in .env both count)."""
     if not p.needs_key:
-        return True
-    v = getattr(get_settings(), p.key_setting or "", None)
-    return v is not None and bool(v.get_secret_value().strip())
+        return []
+    names = [p.key_setting or "", *p.extra.get("also_needs", ())]
+    return [n for n in names if n and not credentials.get(n, db)]
+
+
+def _key_present(db: Session, p: Provider) -> bool:
+    return not _missing_credentials(db, p)
 
 
 def capability_state(db: Session, provider_id: str, capability_id: str) -> tuple[str, str]:
@@ -129,8 +133,9 @@ def capability_state(db: Session, provider_id: str, capability_id: str) -> tuple
     locator = p.extra.get("locator")
     if locator is not None and locator() is None:
         return "missing_tool", "the `claude` program was not found: install Claude Code and sign in, or set YTC_CLAUDE_CODE_BIN in .env"
-    if p.needs_key and not _key_present(p):
-        return "not_configured", f"no API key is configured ({p.key_setting})"
+    if p.needs_key and not _key_present(db, p):
+        missing = ", ".join(credentials.SPECS[n].label if n in credentials.SPECS else n for n in _missing_credentials(db, p))
+        return "not_configured", f"not connected yet: {missing} is missing. Add it on the Connections page."
     if p.needs_attestation:
         att = settings_svc.get(db, "provider_attestations").get(provider_id)
         if not att or not att.get("api_access_confirmed") or (cap.paid and not att.get("commercial_use_confirmed")):
@@ -163,6 +168,6 @@ def status_report(db: Session) -> list[dict[str, Any]]:
             state, detail = capability_state(db, p.id, c.id)
             caps.append({"id": c.id, "description": c.description, "implemented": c.implemented, "verified_live": c.verified_live,
                          "paid": c.paid, "state": state, "detail": detail, "note": c.note})
-        out.append({"id": p.id, "name": p.name, "needs_key": p.needs_key, "key_configured": _key_present(p) if p.needs_key else None,
+        out.append({"id": p.id, "name": p.name, "needs_key": p.needs_key, "key_configured": _key_present(db, p) if p.needs_key else None,
                     "needs_attestation": p.needs_attestation, "attestation": att.get(p.id), "capabilities": caps})
     return out

@@ -116,7 +116,7 @@ def generation(gid: int, db: Session = Depends(get_db), auth: Auth = Depends(req
 
 
 @router.post("/ai/ideas")
-def ask_for_ideas(body: IdeasIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.TASK_CREATE))):
+def ask_for_ideas(body: IdeasIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.TASK_CREATE))):
     """Ask the content strategist to propose ideas. They arrive assessed, as proposals; choosing which to make stays with you."""
     st = gateway.brain_state(db)
     if not st["ready"]:
@@ -130,7 +130,7 @@ def ask_for_ideas(body: IdeasIn, db: Session = Depends(get_wdb), auth: Auth = De
 
 
 @router.post("/ideas/{idea_id}/start-with-ai")
-def start_with_ai(idea_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def start_with_ai(idea_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     """Turn an approved idea into a video and let the AI company write, build, check and prepare it. It stops at every decision that is yours."""
     return conductor.start_with_ai(db, auth.actor, idea_id)
 

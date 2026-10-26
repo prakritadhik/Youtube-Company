@@ -55,7 +55,7 @@ def get_report(report_id: int, db: Session = Depends(get_db), auth: Auth = Depen
 
 
 @router.post("/executive/reports/generate")
-def generate_report(db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SYSTEM_MAINTENANCE))):
+def generate_report(db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SYSTEM_MAINTENANCE))):
     rep = reports.run_reporting_cycle(db)
     audit.record(db, auth.actor, "report.generate_requested", "report", rep.id, {})
     return {"available": True, "report": _exec_report(rep)}
@@ -114,7 +114,7 @@ def get_approvals(db: Session = Depends(get_db), auth: Auth = Depends(require(P.
 
 
 @router.post("/approvals/{approval_id}/decide")
-def decide(approval_id: int, body: Decision, db: Session = Depends(get_wdb),
+def decide(approval_id: int, body: Decision, db: Session = Depends(get_wdb, scope="function"),
            auth: Auth = Depends(require(P.APPROVAL_DECIDE))):
     try:
         req = approvals.decide(db, auth.actor, approval_id, approve=body.approve, note=body.note)

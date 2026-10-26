@@ -122,11 +122,13 @@ def cmd_api(_: argparse.Namespace) -> int:
 
 def cmd_worker(_: argparse.Namespace) -> int:
     from app.security import redaction
+    from app.services import credentials as credentials_svc
     from app.services import registry
     from app.worker.runner import Runner
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     redaction.register_secrets(get_settings().secret_values())
+    credentials_svc.register_all()
     redaction.install_log_redaction()
     registry.load()
     try:

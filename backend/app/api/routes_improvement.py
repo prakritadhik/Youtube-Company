@@ -59,7 +59,7 @@ def overview(db: Session = Depends(get_db), auth: Auth = Depends(require(P.DIAG_
 
 
 @router.post("/improvement/mine")
-def mine_now(db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def mine_now(db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     """Queue the lesson-mining task now instead of waiting for the daily cycle. Reads recorded history only."""
     t = tasks.create(db, auth.actor, title="Look for lessons in completed workflows", task_type="improvement.mine_lessons", assigned_agent_slug="continuous-improvement-scientist",
                      idempotency_key=f"mine-lessons:manual:{utcnow():%Y%m%d%H%M}")
@@ -68,7 +68,7 @@ def mine_now(db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDE
 
 
 @router.post("/board/{public_id}/{action}")
-def board_action(public_id: str, action: str, body: ReasonIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
+def board_action(public_id: str, action: str, body: ReasonIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
     return board_actions.act(db, auth.actor, public_id, action, body.reason)
 
 
@@ -78,7 +78,7 @@ def list_experiments(db: Session = Depends(get_db), auth: Auth = Depends(require
 
 
 @router.post("/experiments")
-def create_experiment(body: ExperimentIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.BOARD_PROPOSE))):
+def create_experiment(body: ExperimentIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.BOARD_PROPOSE))):
     return experiments.serialize(db, experiments.create(db, auth.actor, channel_slug=body.channel, title=body.title, hypothesis=body.hypothesis, change=body.change,
                                                          metric=body.metric, min_per_group=body.min_per_group, confounders=body.confounders), detail=True)
 
@@ -92,29 +92,29 @@ def get_experiment(exp_id: int, db: Session = Depends(get_db), auth: Auth = Depe
 
 
 @router.post("/experiments/{exp_id}/enroll")
-def enroll(exp_id: int, body: EnrollIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def enroll(exp_id: int, body: EnrollIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     row = experiments.enroll(db, auth.actor, exp_id, body.video_id)
     return {"video_id": row.video_id, "arm": row.arm, "draw": row.draw}
 
 
 @router.post("/experiments/{exp_id}/start")
-def start(exp_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
+def start(exp_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
     return experiments.serialize(db, experiments.start(db, auth.actor, exp_id), detail=True)
 
 
 @router.post("/experiments/{exp_id}/analyse")
-def analyse(exp_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.BOARD_PROPOSE))):
+def analyse(exp_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.BOARD_PROPOSE))):
     experiments.analyse(db, auth.actor, exp_id)
     return experiments.serialize(db, experiments.get(db, exp_id), detail=True)
 
 
 @router.post("/experiments/{exp_id}/decide")
-def decide(exp_id: int, body: DecideIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
+def decide(exp_id: int, body: DecideIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
     return experiments.decide(db, auth.actor, exp_id, body.decision, body.note)
 
 
 @router.post("/experiments/{exp_id}/cancel")
-def cancel(exp_id: int, body: ReasonIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
+def cancel(exp_id: int, body: ReasonIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.BOARD_ACTIVATE))):
     return experiments.serialize(db, experiments.cancel(db, auth.actor, exp_id, body.reason), detail=True)
 
 

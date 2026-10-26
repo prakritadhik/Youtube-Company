@@ -15,6 +15,7 @@ const NAV: { href: string; label: string; icon: string; perm?: string }[] = [
   { href: "/channels/ai-story-videos", label: "AI Stories", icon: "✦" },
   { href: "/plan", label: "Content Plan", icon: "✎" },
   { href: "/ai", label: "AI Brain", icon: "◉" },
+  { href: "/connections", label: "Connections", icon: "⇄", perm: "settings:read" },
   { href: "/organization", label: "Organization", icon: "⌘" },
   { href: "/board", label: "Intelligence Board", icon: "▤" },
   { href: "/approvals", label: "Approvals", icon: "✓" },

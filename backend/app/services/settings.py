@@ -40,6 +40,8 @@ DEFAULTS: dict[str, Any] = {
     },
     # The AI brain (Claude Code on this computer). Empty model/effort mean the program's own defaults.
     "ai": {"model": "", "effort": "", "timeout_seconds": 300},
+    # the last result of each connection test (written by the software, never by a person): service -> {ok, detail, at}
+    "connection_tests": {},
     # The time zone schedules are read in ("08:30" means 08:30 here). The owner's own; change it if it is wrong.
     "timezone": "Asia/Kathmandu",
     "emergency_pause": {"active": False, "since": None, "by": None, "reason": None},

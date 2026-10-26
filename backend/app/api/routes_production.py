@@ -55,7 +55,7 @@ def provider_status(db: Session = Depends(get_db), auth: Auth = Depends(require(
 
 
 @router.get("/diagnostics/videos/{video_id}/originality")
-def full_originality(video_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def full_originality(video_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     r = db.scalar(select(OriginalityReview).where(OriginalityReview.video_id == video_id).order_by(OriginalityReview.version.desc()))
     if r is None:
         raise HTTPException(404, "No originality review yet.")
@@ -64,7 +64,7 @@ def full_originality(video_id: int, db: Session = Depends(get_wdb), auth: Auth =
 
 
 @router.get("/diagnostics/videos/{video_id}/qa")
-def full_qa(video_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.DIAG_READ))):
+def full_qa(video_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.DIAG_READ))):
     q = db.scalar(select(QAReport).where(QAReport.video_id == video_id).order_by(QAReport.version.desc()))
     if q is None:
         raise HTTPException(404, "No QA report yet.")

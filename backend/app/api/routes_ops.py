@@ -67,7 +67,7 @@ def list_alerts(include_resolved: bool = False, db: Session = Depends(get_db), a
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-def acknowledge(alert_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def acknowledge(alert_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     try:
         return alerts.serialize(alerts.acknowledge(db, auth.actor, alert_id))
     except LookupError as e:
@@ -77,20 +77,20 @@ def acknowledge(alert_id: int, db: Session = Depends(get_wdb), auth: Auth = Depe
 
 
 @router.post("/schedules/{slug}/run-now")
-def run_now(slug: str, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def run_now(slug: str, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     return {"task_id": schedule.run_now(db, auth.actor, slug)}
 
 
 @router.post("/schedules/{slug}/enable")
-def enable(slug: str, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def enable(slug: str, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     return schedule.serialize(db, schedule.set_enabled(db, auth.actor, slug, True))
 
 
 @router.post("/schedules/{slug}/disable")
-def disable(slug: str, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def disable(slug: str, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     return schedule.serialize(db, schedule.set_enabled(db, auth.actor, slug, False))
 
 
 @router.put("/schedules/{slug}")
-def change(slug: str, body: CadenceIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
+def change(slug: str, body: CadenceIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.SETTINGS_WRITE))):
     return schedule.serialize(db, schedule.set_cadence(db, auth.actor, slug, body.cadence))

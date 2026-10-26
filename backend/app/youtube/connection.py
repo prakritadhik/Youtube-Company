@@ -23,12 +23,11 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
 from app.db import session_scope
 from app.models.org import Channel
 from app.models.youtube import YouTubeAuthState, YouTubeConnection
 from app.security.permissions import Actor, P
-from app.services import audit
+from app.services import audit, credentials
 from app.timeutil import iso, utcnow
 from app.youtube import client as yt
 from app.youtube.crypto import KeyMissing, TokenBox
@@ -50,16 +49,14 @@ class YouTubeError(Exception):
 
 
 def configured() -> bool:
-    s = get_settings()
-    return bool(s.google_oauth_client_id) and s.google_oauth_client_secret is not None
+    return bool(credentials.get("google_oauth_client_id")) and bool(credentials.get("google_oauth_client_secret"))
 
 
 def oauth() -> yt.OAuthClient:
-    s = get_settings()
-    if not configured():
-        raise YouTubeError("NOT_CONFIGURED", "No Google OAuth client is configured. Create one (docs/YOUTUBE.md) and set GOOGLE_OAUTH_CLIENT_ID and "
-                                             "GOOGLE_OAUTH_CLIENT_SECRET in .env, then restart.")
-    return yt.OAuthClient(s.google_oauth_client_id or "", s.google_oauth_client_secret.get_secret_value(), transport=TRANSPORT)  # type: ignore[union-attr]
+    client_id, client_secret = credentials.get("google_oauth_client_id"), credentials.get("google_oauth_client_secret")
+    if not (client_id and client_secret):
+        raise YouTubeError("NOT_CONFIGURED", "No Google OAuth client is connected. Create one (docs/YOUTUBE.md) and paste its client ID and secret on the Connections page.")
+    return yt.OAuthClient(client_id, client_secret, transport=TRANSPORT)
 
 
 def _channel(db: Session, slug: str) -> Channel:

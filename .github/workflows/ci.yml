@@ -16,7 +16,7 @@ jobs:
   backend:
     name: Backend tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +42,7 @@ jobs:
       - name: Lint
         run: python -m ruff check app tests migrations
       - name: Tests
-        run: python -m pytest -n 4 -o addopts="" -q -p no:cacheprovider
+        run: python -m pytest -n 4 -o addopts="" -v --timeout=240 --durations=15 -p no:cacheprovider
 
   frontend:
     name: Dashboard build (${{ matrix.os }})

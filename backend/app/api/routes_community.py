@@ -45,7 +45,7 @@ def video_performance(video_id: int, db: Session = Depends(get_db), auth: Auth =
 
 
 @router.post("/analytics/collect")
-def collect_now(body: CollectIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def collect_now(body: CollectIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     """Queue a collection now instead of waiting for the schedule. Reads only. One per minute per kind."""
     task_type, title = (("analytics.collect", "Collect performance data (requested)") if body.what == "analytics"
                         else ("community.collect_comments", "Fetch and sort comments (requested)"))
@@ -71,12 +71,12 @@ def list_comments(status: str | None = None, category: str | None = None, risk: 
 
 
 @router.post("/comments/{comment_id}/draft")
-def draft_reply(comment_id: int, body: DraftIn, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def draft_reply(comment_id: int, body: DraftIn, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return replies.serialize(replies.create_draft(db, auth.actor, comment_id, body.text))
 
 
 @router.post("/comments/{comment_id}/ignore")
-def ignore_comment(comment_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def ignore_comment(comment_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     c = db.get(Comment, comment_id)
     if c is None:
         raise HTTPException(404, "Comment not found.")
@@ -88,10 +88,10 @@ def ignore_comment(comment_id: int, db: Session = Depends(get_wdb), auth: Auth =
 
 
 @router.post("/reply-drafts/{draft_id}/submit")
-def submit_draft(draft_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def submit_draft(draft_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return replies.submit(db, auth.actor, draft_id)
 
 
 @router.post("/reply-drafts/{draft_id}/discard")
-def discard_draft(draft_id: int, db: Session = Depends(get_wdb), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
+def discard_draft(draft_id: int, db: Session = Depends(get_wdb, scope="function"), auth: Auth = Depends(require(P.VIDEO_MANAGE))):
     return replies.serialize(replies.discard(db, auth.actor, draft_id))

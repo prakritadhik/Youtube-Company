@@ -33,6 +33,25 @@ def backend_python() -> str:
     return str(venv) if venv.exists() else sys.executable
 
 
+SOURCE_DIRS = ("app", "components", "lib", "public")
+SOURCE_FILES = ("package.json", "package-lock.json", "next.config.mjs", "postcss.config.mjs", "tsconfig.json")
+
+
+def dashboard_is_stale() -> bool:
+    """True when there is no built dashboard, or any dashboard source file is newer than the build (for example after pulling an update).
+
+    Without this an update that adds a page would keep serving the old build, and the new page would show "not found".
+    """
+    build_id = FRONTEND / ".next" / "BUILD_ID"
+    if not build_id.exists():
+        return True
+    built = build_id.stat().st_mtime
+    files = [FRONTEND / f for f in SOURCE_FILES if (FRONTEND / f).exists()]
+    for d in SOURCE_DIRS:
+        files += [p for p in (FRONTEND / d).rglob("*") if p.is_file()] if (FRONTEND / d).is_dir() else []
+    return any(p.stat().st_mtime > built for p in files)
+
+
 def load_env_file() -> dict[str, str]:
     """Minimal .env reader so the launcher can learn host/port without importing the backend."""
     env: dict[str, str] = {}
@@ -165,8 +184,8 @@ def main() -> int:
             node = shutil.which("node") or "node"
             next_bin = str(FRONTEND / "node_modules" / "next" / "dist" / "bin" / "next")
             fenv = {**env, "BACKEND_URL": f"http://{api_host}:{api_port}"}
-            if not args.dev and not (FRONTEND / ".next" / "BUILD_ID").exists():
-                run_step([node, next_bin, "build"], FRONTEND, fenv, "Building the dashboard (first run only, ~1 minute)")
+            if not args.dev and dashboard_is_stale():
+                run_step([node, next_bin, "build"], FRONTEND, fenv, "Building the dashboard (first run, or the dashboard code changed; ~1 minute)")
             mode = "dev" if args.dev else "start"
             procs.append(("dashboard", spawn([node, next_bin, mode, "-H", "127.0.0.1", "-p", "3000"], FRONTEND, fenv,
                                              logs / "frontend.log")))
