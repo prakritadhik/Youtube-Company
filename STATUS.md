@@ -142,7 +142,7 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **757 passed** (about 2 min with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **758 passed** (about 2 min with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
 | Frontend typecheck (`tsc --noEmit`) and production build | pass (17 routes, including `/performance`, `/comments` and `/learning`) |
@@ -199,6 +199,12 @@ Metric, gap, retention, comment and reply-draft records (migration 0006); increm
 figures and retention; retention analysis; comment retrieval and `rules-v1` triage; template thank-yous for praise only; approval-gated, read-back-verified
 replies with an optional strict auto-policy; scheduled `analytics.collect` and `community.collect_comments`; department-report claims for analytics and community;
 the monitoring phase of the daily cycle; Performance and Comments pages and Settings controls. Details: [docs/ANALYTICS.md](docs/ANALYTICS.md).
+
+## Channel pages (fixed after Phase 6)
+
+The three channel pages originally kept a hard-coded "unavailable" for performance and audience feedback and read a connection flag that Phase 4 never sets, so they said "YouTube not
+connected" even when it was. They now show the real connection state, retrieved cumulative views per video, a feedback picture, and recommendations derived from the channel's own records
+(comments needing a person, drafts awaiting approval, a retention hypothesis labelled as one), or the exact reason there is nothing to show (`test_the_channel_page_shows_real_connection_performance_and_feedback_or_the_exact_reason_there_is_none`; checked in a browser).
 
 ## Implemented (Phase 6)
 

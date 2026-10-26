@@ -9,8 +9,10 @@ import type { BoardEntry, TaskSummary, VideoItem } from "@/lib/types";
 
 interface ChannelDash {
   channel: { slug: string; name: string; kind: string; objective: string; policy: Record<string, boolean>; youtube_connected: boolean };
-  performance: { available: boolean; reason?: string };
-  audience_feedback: { available: boolean; reason?: string };
+  performance: { available: boolean; reason?: string; uploaded_videos?: number; videos_with_figures?: number; total_views?: number; open_gaps?: number; last_collected?: string;
+    videos?: { id: number; title: string; views_total: number | null; as_of: string | null }[]; note?: string };
+  audience_feedback: { available: boolean; reason?: string; comments?: number; escalated_waiting?: number; drafts_waiting?: number; method?: string;
+    sentiment?: { positive: number; negative: number; questions: number; needs_a_person: number; unclassified: number } };
   production: VideoItem[]; publishing_history: VideoItem[]; tasks: TaskSummary[];
   board: { release_version: number; active_instructions: BoardEntry[]; experiments: BoardEntry[]; lessons: BoardEntry[] };
   recommendations: string[];
@@ -35,8 +37,29 @@ export default function ChannelPage({ params }: { params: Promise<{ slug: string
       } />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Performance"><Unavailable title="Views, watch time, retention, CTR, subscribers" reason={data.performance.reason} /></Card>
-        <Card title="Audience feedback"><Unavailable title="Comments and sentiment" reason={data.audience_feedback.reason} /></Card>
+        <Card title="Performance" subtitle={data.performance.available ? `Last collected ${fmtDate(data.performance.last_collected)}` : undefined}
+          action={<Link className="text-sm text-accent hover:underline" href="/performance">Details</Link>}>
+          {data.performance.available ? (
+            <div className="space-y-3 text-sm">
+              <div><span className="text-2xl font-semibold tabular-nums">{new Intl.NumberFormat("en-US").format(data.performance.total_views ?? 0)}</span> <span className="text-muted">total views across {data.performance.videos_with_figures} of {data.performance.uploaded_videos} uploaded video(s)</span></div>
+              <ul className="space-y-1">{(data.performance.videos ?? []).map((v) => (
+                <li key={v.id} className="flex justify-between gap-3"><span className="min-w-0 truncate">{v.title}</span>
+                  {v.views_total !== null ? <span className="tabular-nums">{new Intl.NumberFormat("en-US").format(v.views_total)} <span className="text-xs text-muted">as of {v.as_of}</span></span> : <Badge tone="warn">unavailable</Badge>}</li>))}</ul>
+              {data.performance.open_gaps ? <p className="text-xs text-muted">{data.performance.open_gaps} figure(s) are unavailable, each with YouTube&rsquo;s reason on the Performance page.</p> : null}
+              {data.performance.note && <p className="text-xs text-muted">{data.performance.note}</p>}
+            </div>
+          ) : <Unavailable title="Views, watch time, retention, CTR, subscribers" reason={data.performance.reason} />}
+        </Card>
+        <Card title="Audience feedback" action={<Link className="text-sm text-accent hover:underline" href="/comments">Comments</Link>}>
+          {data.audience_feedback.available && data.audience_feedback.sentiment ? (
+            <div className="space-y-2 text-sm">
+              <p><span className="text-2xl font-semibold tabular-nums">{data.audience_feedback.comments}</span> <span className="text-muted">comment(s), spam excluded</span></p>
+              <p>{data.audience_feedback.sentiment.positive} positive · {data.audience_feedback.sentiment.negative} negative · {data.audience_feedback.sentiment.questions} question(s) · {data.audience_feedback.sentiment.needs_a_person} needing a person · {data.audience_feedback.sentiment.unclassified} unclassified</p>
+              {(data.audience_feedback.escalated_waiting ?? 0) > 0 && <p><Badge tone="danger">{data.audience_feedback.escalated_waiting} need a person</Badge></p>}
+              <p className="text-xs text-muted">{data.audience_feedback.method}</p>
+            </div>
+          ) : <Unavailable title="Comments and sentiment" reason={data.audience_feedback.reason} />}
+        </Card>
       </div>
 
       <Card className="mt-6" title="Production" subtitle="Videos in the pipeline and what, if anything, still blocks publication.">
@@ -85,9 +108,11 @@ export default function ChannelPage({ params }: { params: Promise<{ slug: string
         )}
       </Card>
 
-      {data.recommendations.length === 0 && (
-        <p className="mt-4 text-sm text-muted">No channel-specific recommendations: recommendations require measured performance data, which is not available yet.</p>
-      )}
+      <Card className="mt-6" title="Recommendations" subtitle="Derived from this channel's own records. Each says what it rests on; none claims a cause.">
+        {data.recommendations.length === 0
+          ? <p className="text-sm text-muted">None right now. Recommendations appear when there are measured figures or comments that need attention.</p>
+          : <List items={data.recommendations} />}
+      </Card>
     </>
   );
 }

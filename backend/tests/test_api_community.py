@@ -181,3 +181,38 @@ def test_collecting_twice_in_one_minute_is_one_task(owner_client, google):
     b = owner_client.post("/api/analytics/collect", json={"what": "analytics"}).json()
     assert a["task_id"] == b["task_id"]
     assert owner_client.post("/api/analytics/collect", json={"what": "revenue"}).status_code == 422
+
+
+def test_the_channel_page_shows_real_connection_performance_and_feedback_or_the_exact_reason_there_is_none(owner_client, google):
+    d = owner_client.get(f"/api/channels/{BDAY}").json()
+    assert d["channel"]["youtube_connected"] is False and d["performance"]["available"] is False and "not connected" in d["performance"]["reason"]
+    assert d["audience_feedback"]["available"] is False and d["recommendations"] == []
+
+    connect_all(owner_client, google, groups=("analytics",))  # connected, but comments are not allowed
+    d = owner_client.get(f"/api/channels/{BDAY}").json()
+    assert d["channel"]["youtube_connected"] is True and "no video has been uploaded" in d["performance"]["reason"]
+    assert "comments permission has not been allowed" in d["audience_feedback"]["reason"]
+
+    connect_all(owner_client, google)  # every permission
+    vid = uploaded_video(google)
+    assert "nothing has been collected yet" in owner_client.get(f"/api/channels/{BDAY}").json()["performance"]["reason"]
+    google.analytics_days["vid001"] = daily_rows()
+    google.retention["vid001"] = [(i / 100, 1 - 0.1 * (i > 40) - 0.003 * i, 1.0) for i in range(1, 101)]
+    google.threads["vid001"] = [thread("c1", "Love this song!"), thread("c2", "I want to hurt myself"), thread("c3", "so boring")]
+    for what in ("analytics", "comments"):
+        t = owner_client.post("/api/analytics/collect", json={"what": what}).json()
+        assert Runner("t", HANDLERS).run_once() == t["task_id"]
+    with session_scope() as s:  # a draft waiting for approval
+        from app.community import replies
+        from app.models.community import Comment
+        owner = owner_actor(s)
+        replies.create_draft(s, owner, s.query(Comment).filter_by(youtube_comment_id="c1").one().id)
+    d = owner_client.get(f"/api/channels/{BDAY}").json()
+    p, f = d["performance"], d["audience_feedback"]
+    assert p["available"] is True and p["total_views"] == 120.0 and p["videos"][0]["views_total"] == 120.0 and p["videos"][0]["title"] == "Garden Morning Song" and p["last_collected"]
+    assert f["available"] is True and f["comments"] == 3 and f["sentiment"] == {"positive": 1, "negative": 1, "questions": 0, "needs_a_person": 1, "unclassified": 0}
+    assert f["escalated_waiting"] == 1 and f["drafts_waiting"] == 1
+    recs = d["recommendations"]
+    assert any("safety, copyright or medicine" in r for r in recs) and any("reply draft" in r for r in recs)
+    assert any(r.startswith("Hypothesis to look into, not a conclusion") and "does not say why viewers left" in r for r in recs)
+    assert vid and owner_client.get("/api/channels/medicine-information").json()["performance"]["available"] is False  # another channel is unaffected

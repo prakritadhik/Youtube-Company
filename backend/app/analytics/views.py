@@ -104,6 +104,67 @@ def overview(db: Session) -> dict[str, Any]:
     return {"channels": chans, "revenue": {"status": "unavailable", "reason": REVENUE_NOTE}}
 
 
+def channel_performance(db: Session, ch: Channel) -> dict[str, Any]:
+    """What the channel page shows under Performance: real retrieved figures, or exactly why there are none."""
+    conn = conn_svc.connection_for(db, ch.id)
+    if conn is None or conn.status != "CONNECTED":
+        return {"available": False, "reason": "This channel is not connected to YouTube, so there are no views, watch time or retention to show. Connect it in Settings."}
+    vids = db.scalars(select(Video).where(Video.channel_id == ch.id, Video.youtube_video_id.is_not(None)).order_by(Video.id.desc())).all()
+    if not vids:
+        return {"available": False, "reason": "Connected, but no video has been uploaded to YouTube yet, so there is nothing to measure."}
+    ids = [v.id for v in vids]
+    latest: dict[int, Metric] = {}
+    for m in db.scalars(select(Metric).where(Metric.video_id.in_(ids), Metric.metric == "views_total").order_by(Metric.day)):
+        latest[m.video_id] = m
+    gaps = db.scalar(select(func.count()).select_from(MetricGap).where(MetricGap.channel_id == ch.id)) or 0
+    if not latest:
+        return {"available": False, "reason": "Connected and uploaded, but nothing has been collected yet. The first collection runs daily, or use Collect now on the Performance page.",
+                "uploaded_videos": len(vids), "open_gaps": gaps}
+    total = sum(m.value for m in latest.values())
+    return {"available": True, "uploaded_videos": len(vids), "videos_with_figures": len(latest), "total_views": total, "open_gaps": gaps,
+            "last_collected": iso(max(m.retrieved_at for m in latest.values())), "can_read_analytics": conn_svc.has_group(conn, "analytics"),
+            "videos": [{"id": v.id, "title": v.title or v.working_title, "views_total": latest[v.id].value if v.id in latest else None,
+                        "as_of": str(latest[v.id].day) if v.id in latest else None} for v in vids[:10]],
+            "note": "Cumulative counts as reported by YouTube; daily figures and retention are on the Performance page. A video with no figure shows none, not zero."}
+
+
+def channel_feedback(db: Session, ch: Channel) -> dict[str, Any]:
+    conn = conn_svc.connection_for(db, ch.id)
+    if conn is None or conn.status != "CONNECTED":
+        return {"available": False, "reason": "This channel is not connected to YouTube, so comments cannot be retrieved."}
+    if not conn_svc.has_group(conn, "comments"):
+        return {"available": False, "reason": "Connected, but the comments permission has not been allowed. Allow comments for this channel in Settings, YouTube."}
+    cats = dict(db.execute(select(Comment.category, func.count()).where(Comment.channel_id == ch.id, Comment.is_ours.is_(False), Comment.category != "spam").group_by(Comment.category)).all())
+    if not cats:
+        return {"available": False, "reason": "Comments are allowed, but none has been retrieved yet (the fetch runs twice a day, or use Fetch comments now)."}
+    sentiment = {"positive": 0, "negative": 0, "questions": 0, "needs_a_person": 0, "unclassified": 0}
+    for cat, n in cats.items():
+        sentiment[SENTIMENT.get(cat, "unclassified")] += n
+    waiting = db.scalar(select(func.count()).select_from(Comment).where(Comment.channel_id == ch.id, Comment.risk == "escalate", Comment.status.in_(("NEW", "TRIAGED", "DRAFTED")))) or 0
+    drafts = db.scalar(select(func.count()).select_from(ReplyDraft).join(Comment, Comment.id == ReplyDraft.comment_id)
+                       .where(Comment.channel_id == ch.id, ReplyDraft.status == "DRAFT")) or 0
+    return {"available": True, "comments": sum(cats.values()), "sentiment": sentiment, "by_category": cats, "escalated_waiting": waiting, "drafts_waiting": drafts,
+            "method": "rules-v1: fixed rules, English only, blunt. A count of how the rules sorted the comments, not a reading of tone."}
+
+
+def channel_recommendations(db: Session, ch: Channel) -> list[str]:
+    """To-dos and hypotheses derived from records. Each says what it rests on; none claims a cause."""
+    out: list[str] = []
+    fb = channel_feedback(db, ch)
+    if fb["available"] and fb["escalated_waiting"]:
+        out.append(f"{fb['escalated_waiting']} comment(s) on this channel mention safety, copyright or medicine and need a person (Comments page).")
+    if fb["available"] and fb["drafts_waiting"]:
+        out.append(f"{fb['drafts_waiting']} reply draft(s) wait for your approval.")
+    last = db.scalar(select(RetentionPoint.video_id).join(Video, Video.id == RetentionPoint.video_id).where(Video.channel_id == ch.id).order_by(RetentionPoint.retrieved_at.desc()).limit(1))
+    if last is not None:
+        a = video_performance(db, last)["retention_analysis"]
+        if a["status"] == "available" and a["steepest_loss"]:
+            w = a["steepest_loss"]
+            out.append(f"Hypothesis to look into, not a conclusion: on “{db.get(Video, last).title or db.get(Video, last).working_title}” the audience fell most between "
+                       f"{round(100 * w['from'])}% and {round(100 * w['to'])}% of the video ({w['loss_points']} points). Watch that section; this does not say why viewers left.")
+    return out
+
+
 def comment_view(c: Comment, video_title: str | None = None, channel_slug: str | None = None, draft: ReplyDraft | None = None) -> dict[str, Any]:
     from app.community import replies
 

@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.analytics import views as analytics_views
 from app.enums import ApprovalStatus, OperatingMode, OriginalityStatus, TaskStatus, VideoStage
 from app.models.approvals import ApprovalRequest
 from app.models.board import BoardEntry
@@ -16,6 +17,7 @@ from app.models.videos import Video
 from app.services import approvals, audit, board, finance, reports, tasks, videos
 from app.services import settings as settings_svc
 from app.timeutil import iso
+from app.youtube import connection as conn_svc
 
 _IN_PRODUCTION = {
     VideoStage.IDEA.value, VideoStage.RESEARCH.value, VideoStage.BRIEF.value, VideoStage.SCRIPT.value,
@@ -104,21 +106,22 @@ def channel_dashboard(db: Session, slug: str) -> dict[str, Any]:
         raise LookupError(slug)
     vids = list(db.scalars(select(Video).where(Video.channel_id == ch.id).order_by(Video.id.desc())))
     chan_tasks = list(db.scalars(select(Task).where(Task.channel_id == ch.id).order_by(Task.id.desc()).limit(30)))
+    conn = conn_svc.connection_for(db, ch.id)
     instr = board.instructions_for(db, slug)
     entries = [board.serialize(db, e) for e in db.scalars(
         select(BoardEntry).where(BoardEntry.channel_id == ch.id, BoardEntry.status.in_(sorted(board.OWNER_VISIBLE)))
         .order_by(BoardEntry.updated_at.desc()).limit(20))]
     return {
         "channel": {"slug": ch.slug, "name": ch.name, "kind": ch.kind, "objective": ch.objective, "brand": ch.brand,
-                    "policy": ch.policy, "youtube_connected": ch.youtube_channel_id is not None},
-        "performance": {"available": False, "reason": "YouTube analytics are not connected; no views, watch time or retention to show."},
-        "audience_feedback": {"available": False, "reason": "Comments have not been retrieved."},
+                    "policy": ch.policy, "youtube_connected": bool(conn and conn.status == "CONNECTED")},
+        "performance": analytics_views.channel_performance(db, ch),
+        "audience_feedback": analytics_views.channel_feedback(db, ch),
         "production": [videos.serialize(db, v) for v in vids if v.stage != VideoStage.PUBLISHED.value],
         "publishing_history": [videos.serialize(db, v) for v in vids if v.stage == VideoStage.PUBLISHED.value],
         "tasks": [tasks.summary(db, t) for t in chan_tasks],
         "board": {"release_version": instr["release_version"], "active_instructions": instr["instructions"],
                   "experiments": instr["experiments"], "lessons": entries},
-        "recommendations": [],
+        "recommendations": analytics_views.channel_recommendations(db, ch),
     }
 
 

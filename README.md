@@ -90,7 +90,7 @@ data/        (git-ignored) database, artifacts, backups, logs
 ```bash
 cd backend && source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m app.cli --help                       # migrate, seed, setup, api, worker, doctor, backup, restore, ...
-python -m pytest -n 4                          # 757 backend tests (~2 min; omit -n 4 to run serially)
+python -m pytest -n 4                          # 758 backend tests (~2 min; omit -n 4 to run serially)
 ruff check app tests migrations
 cd ../frontend && npx tsc --noEmit && npm run build
 node e2e/smoke.cjs                             # browser smoke test (needs Playwright; fresh data dir only)
