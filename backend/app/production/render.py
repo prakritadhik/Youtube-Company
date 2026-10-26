@@ -7,6 +7,7 @@ working directory.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import tempfile
@@ -58,6 +59,15 @@ class RenderResult:
     elapsed_s: float
     stderr_tail: str
     total_s: float
+    audio_command: list[str] = field(default_factory=list)
+    audio_true_peak_db: float | None = None  # measured on the encoded audio that went into the video
+    audio_trim_db: float = 0.0  # level taken off after loudness normalisation so the encoded audio stays under the peak limit
+
+
+AUDIO_FILE = "audio.m4a"
+PEAK_TARGET_DB = -1.5  # aim here ...
+PEAK_ACCEPT_DB = -1.0  # ... and accept anything at or below this (the quality check's own limit is -0.5)
+MAX_AUDIO_PASSES = 4
 
 
 def ffmpeg_path() -> str:
@@ -96,7 +106,7 @@ def build_command(spec: RenderSpec, ffmpeg: str = "ffmpeg") -> list[str]:
     for i, s in enumerate(spec.scenes):
         length = s.duration_s + (T if i < n - 1 else 0.0)  # overlap into the next scene for the crossfade
         cmd += ["-loop", "1", "-framerate", str(spec.fps), "-t", f"{length:.3f}", "-i", f"s{i}.png"]
-    cmd += ["-i", "audio.wav"]
+    cmd += ["-i", AUDIO_FILE]
 
     f: list[str] = []
     for i, s in enumerate(spec.scenes):
@@ -126,16 +136,52 @@ def build_command(spec: RenderSpec, ffmpeg: str = "ffmpeg") -> list[str]:
         tail.append(f"fade=t=out:st={max(total - spec.fade_out_s, 0):.3f}:d={spec.fade_out_s}")
     f.append(f"[{last}]{','.join(tail) if tail else 'null'}[vout]")
 
+    cmd += ["-filter_complex", ";".join(f), "-map", "[vout]", "-map", f"{n}:a",
+            "-c:v", "libx264", "-preset", spec.preset, "-crf", str(spec.crf), "-pix_fmt", "yuv420p", "-r", str(spec.fps),
+            "-c:a", "copy", "-movflags", "+faststart", "-t", f"{total:.3f}", "out.mp4"]  # the audio was finished and measured by build_audio_command
+    return cmd
+
+
+def build_audio_command(spec: RenderSpec, ffmpeg: str = "ffmpeg", *, trim_db: float = 0.0) -> list[str]:
+    """Command that turns audio.wav into the finished, encoded soundtrack (audio.m4a): loudness, peak ceiling, fades, exact length."""
+    total = spec.total_s
     af = ["aresample=44100"]
     if spec.loudnorm:
-        af.append("loudnorm=I=-16:TP=-1.5:LRA=11")
+        # loudnorm alone can leave peaks above its own ceiling (it depends on the FFmpeg version and the clip), so a limiter follows it.
+        af += ["loudnorm=I=-16:TP=-1.5:LRA=11", "alimiter=limit=0.708:level=0"]
+    if trim_db:
+        af.append(f"volume={trim_db:.2f}dB")
     af += ["afade=t=in:st=0:d=0.3", f"afade=t=out:st={max(total - 1.2, 0):.3f}:d=1.2", f"apad=whole_dur={total:.3f}", f"atrim=0:{total:.3f}"]
-    f.append(f"[{n}:a]{','.join(af)}[aout]")
+    return [ffmpeg, "-y", "-hide_banner", "-nostdin", "-loglevel", "error", "-i", "audio.wav", "-af", ",".join(af),
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", AUDIO_FILE]
 
-    cmd += ["-filter_complex", ";".join(f), "-map", "[vout]", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", spec.preset, "-crf", str(spec.crf), "-pix_fmt", "yuv420p", "-r", str(spec.fps),
-            "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-movflags", "+faststart", "-t", f"{total:.3f}", "out.mp4"]
-    return cmd
+
+def true_peak_db(ffmpeg: str, audio: Path) -> float | None:
+    """True peak of an encoded file, measured the way the quality check measures it (None if FFmpeg reports none)."""
+    proc = subprocess.run([ffmpeg, "-nostdin", "-hide_banner", "-i", audio.name, "-vn", "-af", "ebur128=peak=true", "-f", "null", "-"],
+                          cwd=audio.parent, capture_output=True, text=True, timeout=600, check=False)
+    found = re.findall(r"Peak:\s+(-?[\d.]+) dBFS", proc.stderr)
+    return float(found[-1]) if found else None
+
+
+def encode_audio(spec: RenderSpec, ffmpeg: str, work: Path, *, timeout_s: int) -> tuple[list[str], float | None, float]:
+    """Encode the soundtrack, measure the *encoded* result, and take level off until its true peak is under the limit.
+
+    AAC encoding adds its own overshoot on top of whatever the filters left, and by an amount that differs between FFmpeg
+    versions, so the only reliable ceiling is to measure what was actually produced and correct it.
+    """
+    trim, cmd, peak = 0.0, [], None
+    for _ in range(MAX_AUDIO_PASSES):
+        cmd = build_audio_command(spec, ffmpeg, trim_db=trim)
+        proc = subprocess.run(cmd, cwd=work, capture_output=True, text=True, timeout=timeout_s, check=False)
+        produced = work / AUDIO_FILE
+        if proc.returncode != 0 or not produced.is_file() or produced.stat().st_size == 0:
+            raise RenderError(f"FFmpeg failed while preparing the audio (exit {proc.returncode})", cmd, proc.stderr[-3000:])
+        peak = true_peak_db(ffmpeg, produced)
+        if peak is None or peak <= PEAK_ACCEPT_DB:
+            break
+        trim -= (peak - PEAK_TARGET_DB) + 0.2
+    return cmd, peak, trim
 
 
 def render(spec: RenderSpec, output: Path, *, timeout_s: int = 3600) -> RenderResult:
@@ -151,8 +197,9 @@ def render(spec: RenderSpec, output: Path, *, timeout_s: int = 3600) -> RenderRe
         (work / "fonts").mkdir()
         for font in spec.font_dir.glob("*.otf"):
             shutil.copyfile(font, work / "fonts" / font.name)
-        cmd = build_command(spec, exe)
         t0 = time.time()
+        audio_cmd, peak, trim = encode_audio(spec, exe, work, timeout_s=timeout_s)
+        cmd = build_command(spec, exe)
         proc = subprocess.run(cmd, cwd=work, capture_output=True, text=True, timeout=timeout_s, check=False)
         elapsed = time.time() - t0
         produced = work / "out.mp4"
@@ -162,6 +209,6 @@ def render(spec: RenderSpec, output: Path, *, timeout_s: int = 3600) -> RenderRe
         tmp = output.with_suffix(".part")
         shutil.copyfile(produced, tmp)
         tmp.replace(output)
-        return RenderResult(output, cmd, elapsed, proc.stderr[-1500:], spec.total_s)
+        return RenderResult(output, cmd, elapsed, proc.stderr[-1500:], spec.total_s, audio_command=audio_cmd, audio_true_peak_db=peak, audio_trim_db=round(trim, 2))
     finally:
         shutil.rmtree(work, ignore_errors=True)

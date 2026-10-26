@@ -284,7 +284,8 @@ def render_video(ctx: TaskContext) -> HandlerResult:
         a = assets_svc.register(db, actor, video_id=ctx.video_id, kind="video", role="final", path=out, provider="local-render",  # type: ignore[arg-type]
                                 license_type="owner-generated", commercial_use="yes",
                                 license_ref="Assembled by this software from the registered, licensed assets of this video.",
-                                params={"command": res.command, "elapsed_s": round(res.elapsed_s, 2), "duration_s": res.total_s,
+                                params={"command": res.command, "audio_command": res.audio_command, "audio_true_peak_db": res.audio_true_peak_db,
+                                        "audio_trim_db": res.audio_trim_db, "elapsed_s": round(res.elapsed_s, 2), "duration_s": res.total_s,
                                         "size": [rspec.size[0], rspec.size[1]]}, task_id=ctx.task_id)
         video = db.get(Video, ctx.video_id)
         video.final_video_path = a.path  # type: ignore[union-attr]

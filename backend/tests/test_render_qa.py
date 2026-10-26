@@ -56,10 +56,49 @@ def test_a_good_render_passes_every_check(rendered):
 
 
 def test_render_command_is_real_and_uses_the_expected_filters(rendered):
-    cmd = " ".join(rendered["res"].command)
-    for piece in ("libx264", "zoompan", "xfade", "subtitles=subs.ass", "loudnorm", "-movflags +faststart", "yuv420p"):
+    res = rendered["res"]
+    cmd, audio = " ".join(res.command[1:]), " ".join(res.audio_command[1:])  # [0] is the FFmpeg program itself, whose path is platform-specific
+    for piece in ("libx264", "zoompan", "xfade", "subtitles=subs.ass", "-movflags +faststart", "yuv420p"):
         assert piece in cmd
-    assert "C:\\" not in cmd and "/tmp" not in cmd  # inputs are referenced by simple names, no platform paths
+    for piece in ("loudnorm", "alimiter", "-c:a aac"):
+        assert piece in audio
+    assert "-c:a copy" in cmd  # the soundtrack that was measured is the one that goes into the video
+    for text in (cmd, audio):
+        assert "C:\\" not in text and "/tmp" not in text  # inputs are referenced by simple names, no platform paths
+
+
+def test_the_soundtrack_in_the_finished_file_is_measured_and_under_the_peak_limit(rendered):
+    res = rendered["res"]
+    assert res.audio_true_peak_db is not None and res.audio_true_peak_db <= rd.PEAK_ACCEPT_DB
+    assert by_id(qa.run_checks(res.output, cfg()))["clipping"]["status"] == "pass"
+
+
+def test_audio_that_comes_out_too_hot_is_turned_down_and_encoded_again(tmp_path, monkeypatch):
+    """The encoder can overshoot by a different amount on every FFmpeg version, so the level is corrected from what was measured."""
+    wav = synth.compose({"tempo_bpm": 120, "key": "C major", "seed": 2, "structure": ["intro"], "bars": {"intro": 1}}).write_wav(tmp_path / "m.wav")
+    img = imaging.make_scene(tmp_path / "s.png", size=SIZE, seed=1, title="A")
+    spec = rd.RenderSpec([rd.Scene(img, 2.0)], wav, None, size=SIZE, preset="ultrafast")
+    work = tmp_path / "w"
+    work.mkdir()
+    shutil.copyfile(wav, work / "audio.wav")
+    readings = iter([1.2, -1.4])  # first take overshoots by 2.7 dB over the target, the second is fine
+    monkeypatch.setattr(rd, "true_peak_db", lambda exe, path: next(readings))
+    cmd, peak, trim = rd.encode_audio(spec, rd.ffmpeg_path(), work, timeout_s=120)
+    assert peak == -1.4 and trim == pytest.approx(-(1.2 + 1.5) - 0.2, abs=0.01)
+    assert f"volume={trim:.2f}dB" in " ".join(cmd)
+    assert (work / rd.AUDIO_FILE).stat().st_size > 0
+
+
+def test_audio_that_can_never_be_brought_under_the_limit_is_reported_not_hidden(tmp_path, monkeypatch):
+    wav = synth.compose({"tempo_bpm": 120, "key": "C major", "seed": 2, "structure": ["intro"], "bars": {"intro": 1}}).write_wav(tmp_path / "m.wav")
+    img = imaging.make_scene(tmp_path / "s.png", size=SIZE, seed=1, title="A")
+    spec = rd.RenderSpec([rd.Scene(img, 2.0)], wav, None, size=SIZE, preset="ultrafast")
+    work = tmp_path / "w"
+    work.mkdir()
+    shutil.copyfile(wav, work / "audio.wav")
+    monkeypatch.setattr(rd, "true_peak_db", lambda exe, path: 3.0)
+    _, peak, _ = rd.encode_audio(spec, rd.ffmpeg_path(), work, timeout_s=120)
+    assert peak == 3.0  # it stops trying after a few passes; the quality check will then fail the video honestly
 
 
 def test_a_missing_or_empty_file_fails_immediately(tmp_path):

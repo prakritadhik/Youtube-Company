@@ -46,6 +46,31 @@ SCRUBBED_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_USE_BE
 REQUIRED_FLAGS = ("--print", "--output-format", "--tools", "--system-prompt", "--no-session-persistence")
 OPTIONAL_FLAGS = ("--safe-mode", "--model", "--effort")
 
+def _own_process_group() -> dict[str, Any]:
+    """Start the program in its own process group so that, if it has to be stopped, everything it started is stopped with it."""
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _kill_tree(proc: subprocess.Popen[str]) -> None:
+    """Stop the program and its children. On Windows the program is usually a `.cmd` launcher around another process, and
+    ending only the launcher would leave the real one running (and its output pipes open) until it finished by itself."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True, timeout=15, check=False)
+        else:
+            import signal
+
+            os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        proc.kill()
+    except OSError:
+        pass
+
+
 _serial = threading.Semaphore(1)  # one call at a time: the plan's usage limit is shared and bursts waste it
 
 
@@ -157,15 +182,27 @@ class ClaudeCodeClient:
 
     def _run(self, args: list[str], *, stdin: str | None = None, timeout: float | None = None) -> subprocess.CompletedProcess[str]:
         self.sandbox.mkdir(parents=True, exist_ok=True)
+        limit = timeout or self.timeout
         try:
-            return subprocess.run([self._require_binary(), *args], input=stdin, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                  timeout=timeout or self.timeout, cwd=str(self.sandbox), env=self._child_env(), check=False)
+            proc = subprocess.Popen([self._require_binary(), *args], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                    encoding="utf-8", errors="replace", cwd=str(self.sandbox), env=self._child_env(), **_own_process_group())
         except FileNotFoundError as e:
             raise NotInstalled(f"The `claude` program could not be started ({e}). Check YTC_CLAUDE_CODE_BIN or reinstall Claude Code.") from e
-        except subprocess.TimeoutExpired as e:
-            raise Timeout(f"Claude Code did not answer within {int(timeout or self.timeout)} seconds.", detail=str(e)) from e
         except OSError as e:
             raise UnknownError(f"The `claude` program could not be run: {e}") from e
+        try:
+            out, err = proc.communicate(input=stdin, timeout=limit)
+        except subprocess.TimeoutExpired as e:
+            _kill_tree(proc)
+            try:
+                proc.communicate(timeout=10)
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+            raise Timeout(f"Claude Code did not answer within {int(limit)} seconds.", detail=str(e)) from e
+        except BaseException:
+            _kill_tree(proc)
+            raise
+        return subprocess.CompletedProcess(proc.args, proc.returncode, out, err)
 
     def flags(self) -> set[str]:
         """The options this version of the program lists in its own help, so only supported ones are used."""

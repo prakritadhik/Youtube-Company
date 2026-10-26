@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 
@@ -116,6 +117,27 @@ def test_a_call_that_takes_too_long_is_stopped(fake):
     assert time.time() - t0 < 4 and e.value.retryable is True
 
 
+@pytest.mark.skipif(os.name == "nt", reason="the Windows stand-in is already a launcher around a second process, which the test above covers")
+def test_a_timeout_also_stops_what_the_program_started(tmp_path):
+    """The real program is a launcher around another process; stopping only the launcher would leave that process running."""
+    pidfile = tmp_path / "child.pid"
+    script = tmp_path / "claude"
+    script.write_text('#!/bin/sh\ncase "$1" in --help) echo "--print --output-format --tools --system-prompt --no-session-persistence"; exit 0;; esac\n'
+                      f'sleep 30 &\necho $! > {pidfile}\nwait\n')
+    script.chmod(0o755)
+    with pytest.raises(cc.Timeout):
+        ClaudeCodeClient(str(script), sandbox=tmp_path / "sb", timeout=1).generate(system="s", prompt="p")
+    child = int(pidfile.read_text())
+    for _ in range(50):
+        try:
+            os.kill(child, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.1)
+    os.kill(child, 9)
+    raise AssertionError("the process the program started was left running")
+
+
 def test_calls_run_one_at_a_time_so_the_plans_limit_is_not_burst(fake):
     fake.set(sleep=0.6)
     stamps = []
@@ -160,13 +182,14 @@ def test_the_doctor_reports_each_way_it_can_fail(fake, tmp_path):
 
 
 def test_locating_the_program_uses_the_configured_path_then_the_path_variable(fake, monkeypatch, tmp_path):
+    same = lambda found: found is not None and os.path.normcase(found) == os.path.normcase(str(fake.path))  # noqa: E731 - Windows reports claude.CMD for claude.cmd
     monkeypatch.setenv("YTC_CLAUDE_CODE_BIN", str(fake.path))
     reset_settings_cache()
-    assert cc.locate() == str(fake.path)
+    assert same(cc.locate())
     monkeypatch.setenv("YTC_CLAUDE_CODE_BIN", "  ")
     reset_settings_cache()
     monkeypatch.setenv("PATH", str(fake.dir))
-    assert cc.locate() == str(fake.path)
+    assert same(cc.locate())
     monkeypatch.setenv("PATH", str(tmp_path / "empty"))
     assert cc.locate() is None
     reset_settings_cache()
