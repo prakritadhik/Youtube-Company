@@ -323,7 +323,6 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 
 ## Install verification
 
-Re-run after Phase 6 on Linux from a **clean clone of the pushed branch** (an empty directory, nothing local, commit `1e45632`): `scripts/setup.sh` (about 80 s, including the dashboard
-build) → `python -m pytest -n 4` (**757 passed**) → `launcher.py --check` (all prerequisites present) → `python3 launcher.py` on a fresh data directory → browser smoke test
-(**passed**). The first install check (end of Phase 1) found and fixed two real bugs the unit tests had missed: comments after values in `.env.example` crashed the first start, and blank
+Re-run after Phase 8 on Linux from a **clean clone of the pushed branch** (an empty directory, nothing local, commit `e14e008`): `scripts/setup.sh` (about 66 s, including the dashboard
+build) → `python -m pytest -n 4` (**854 passed, 3 skipped**) → `launcher.py --check` (all prerequisites present). The browser smoke test and the real-process checks were run on the working tree that became that commit. The first install check (end of Phase 1) found and fixed two real bugs the unit tests had missed: comments after values in `.env.example` crashed the first start, and blank
 placeholder API keys were reported as "configured"; both have regression tests. The same path on **Windows has not been run** (that is the first item under "Needs you").
