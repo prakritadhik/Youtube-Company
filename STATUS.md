@@ -194,8 +194,8 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 | Real processes, AI company (`python scripts/verify_ai_stack.py`: real API + worker + FFmpeg, a stand-in `claude`, driven only through the API) | **9 of 9 checks passed**: not ready until you confirm and set an allowance; connection test; start with the AI company; the worker's own housekeeping reviews and conducts; READY with the publication request pending; 4 recorded calls; every task COMPLETED by a manager |
 | Restart check (`python scripts/verify_restart.py`) after the housekeeping change | passed (8 of 8) |
 | Migration `0008` | `alembic check` clean; down/up/down cycle clean |
-| **GitHub Actions, clean Windows machine** (`windows-latest`, commit `9cb02b3`, run 40347409405) | **all 4 Windows jobs green**: `setup.ps1` installer + prerequisite check; dashboard typecheck and production build; the whole backend suite (878 passed, 3 skipped); the real API + worker processes (restart survival 8 of 8, the AI company end to end with a stand-in `claude.cmd`) |
-| GitHub Actions, clean Linux machine (`ubuntu-latest`, commit `70a01e6`, run 40349241934) | backend suite (878 passed, 3 skipped), lint and dashboard build green; the real-process job on Linux is the one CI result not yet confirmed at the time of writing (its FFmpeg install step stalled on the runner's package mirror in two runs; the step is now bounded and retried). The same two scripts pass locally on Linux |
+| **GitHub Actions, clean Windows machine** (`windows-latest`, commit `a04bf3d`, run 40350110130) | **all 4 Windows jobs green**: `setup.ps1` installer + prerequisite check; dashboard typecheck and production build; the whole backend suite (878 passed, 3 skipped); the real API + worker processes (restart survival, and the AI company end to end with a stand-in `claude.cmd`) |
+| **GitHub Actions, clean Linux machine** (`ubuntu-latest`, same run) | **all 3 Linux jobs green**: backend lint + suite, dashboard build, the real API + worker processes (restart survival, the AI company end to end). All 7 jobs of the run passed; the code is identical to the branch head (later commits only touch this file) |
 | Clean-clone install via `scripts/setup.sh` | see "Install verification" below |
 
 Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_settings`, `test_tasks`, `test_board`,
@@ -348,6 +348,6 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
 ## Install verification
 
 Re-run after Phase 9 on Linux from a **clean clone of the pushed branch** (an empty directory, nothing local, commit `70a01e6`): `scripts/setup.sh` (about 99 s, including the dashboard
-build) → `python -m pytest -n 4` (**878 passed, 3 skipped**) → `launcher.py --check` (all prerequisites present). On a clean **Windows** machine (GitHub's `windows-latest`, commits `9cb02b3` and `70a01e6`) the same path
+build) → `python -m pytest -n 4` (**878 passed, 3 skipped**) → `launcher.py --check` (all prerequisites present). On a clean **Windows** machine (GitHub's `windows-latest`, commits `9cb02b3`, `70a01e6` and `a04bf3d`) the same path
 ran green: `scripts\windows\setup.ps1` → prerequisite check, the dashboard build, the whole suite, restart survival and the AI company end to end. That is a fresh GitHub machine, not your PC. The first install check (end of Phase 1) found and fixed two real bugs the unit tests had missed:
 comments after values in `.env.example` crashed the first start, and blank placeholder API keys were reported as "configured"; both have regression tests. The Windows run found four more (see "Faults found by running on a clean Windows machine").
