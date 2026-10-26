@@ -19,6 +19,8 @@ free disk, whether providers are configured, and whether the database and audit 
 | A task is stuck in BLOCKED | Open Organization → the task: the blocker says why (failed dependency, budget limit, or "an external action had already started"). |
 | Everything says PAUSED | Emergency pause is on: Settings → Resume company. |
 | The first-run setup page says "only available from this computer" | Open the dashboard on the PC that runs it, at `http://localhost:3000`. |
+| AI Brain says the `claude` program was not found | Install Claude Code and run `claude` once to sign in. If it still is not found, put its full path in `.env` as `YTC_CLAUDE_CODE_BIN=...` (on Windows usually the `claude.cmd` in the npm folder, found with `where claude`), then restart. Details: [AI_BRAIN.md](AI_BRAIN.md) |
+| Writing steps wait with "AI_…" in the blocker | The AI brain is not usable right now (not signed in, plan limit, allowance used, or you have not confirmed your plan or set the daily allowance). Fix it on the AI Brain page; the work resumes by itself |
 | Antivirus quarantines `node.exe` or `ffmpeg.exe` | Add the project folder to the exclusions; these are normal developer tools. |
 
 **The Windows scripts have not been run on Windows yet.** If one fails, copy the message and the last lines of

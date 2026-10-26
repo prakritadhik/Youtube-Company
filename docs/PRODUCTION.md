@@ -6,8 +6,8 @@ What the platform can really produce today, and what it cannot.
 
 | Step | Today | Detail |
 |---|---|---|
-| Creative brief | **Manual** (validated, versioned) | All 14 required fields plus channel extras; a musical plan for birthday songs. The creative director's manager approves it. An LLM will draft briefs once a model provider is connected |
-| Lyrics / script | **Manual** (validated, versioned) | Author recorded (human / agent / provider). Medicine scripts need a source marker on every factual sentence |
+| Creative brief | **Manual** (validated, versioned) | All 14 required fields plus channel extras; a musical plan for birthday songs. The creative director's manager approves it. **Manual, or drafted by the AI brain** (*Start with the AI company*), always as a DRAFT the manager must review. See [AI_BRAIN.md](AI_BRAIN.md) |
+| Lyrics / script | **Manual, or drafted by the AI brain** (validated, versioned) | Author recorded (human / agent / provider; AI drafts are labelled). Lyrics must match the planned sections and fit the music; medicine scripts need a source marker on every factual sentence |
 | Soundtrack | **Automated, local** | Seeded algorithmic **instrumental** with a bar-accurate timeline. **No vocals.** A *sung* song needs a music provider (ElevenLabs music is *observed in the owner's workspace* but its adapter is not written) |
 | Narration | **Built, unverified live** | ElevenLabs text-to-speech, gated by key + owner attestation + budget; tested against a mock transport only |
 | Scenes, thumbnail | **Automated, local** | Deterministic illustrated backdrops and thumbnails with the bundled Inter font. Placeholders for real illustration |

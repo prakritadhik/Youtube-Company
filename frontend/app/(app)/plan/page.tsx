@@ -92,6 +92,7 @@ function IdeaPanel({ id, canWrite, onChanged }: { id: number; canWrite: boolean;
   const decide = (approve: boolean) => act(approve ? "approve" : "reject", () =>
     api(`/api/ideas/${id}/decision`, { method: "POST", body: { approve, note, planned_for: approve && planned ? planned : null } }));
   const start = () => act("start", async () => { const r = await api<{ video_id: number }>(`/api/ideas/${id}/start`, { method: "POST", body: {} }); setStarted(r.video_id); });
+  const startWithAi = () => act("start-ai", async () => { const r = await api<{ video_id: number }>(`/api/ideas/${id}/start-with-ai`, { method: "POST", body: {} }); setStarted(r.video_id); });
 
   return (
     <div className="space-y-5 text-sm">
@@ -103,7 +104,7 @@ function IdeaPanel({ id, canWrite, onChanged }: { id: number; canWrite: boolean;
         {d.rationale && <p className="mt-1 text-muted">Why: {d.rationale}</p>}
       </div>
       <ErrorNote error={err} />
-      {started !== null && <p className="rounded-xl bg-ok-soft p-3 text-ok">Production started. <Link className="underline" href={`/videos/${started}`}>Open video #{started}</Link></p>}
+      {started !== null && <p className="rounded-xl bg-ok-soft p-3 text-ok">Started. <Link className="underline" href={`/videos/${started}`}>Open video #{started}</Link></p>}
       {d.video_id && started === null && <p><Link className="text-accent hover:underline" href={`/videos/${d.video_id}`}>Open video #{d.video_id}</Link></p>}
       {d.decision_note && <p className="rounded-xl bg-surface2 p-3"><span className="font-medium">Decision ({d.decided_by}):</span> {d.decision_note}</p>}
 
@@ -174,8 +175,10 @@ function IdeaPanel({ id, canWrite, onChanged }: { id: number; canWrite: boolean;
             <Button busy={busy === "assess"} onClick={() => act("assess", () => api(`/api/ideas/${id}/assess`, { method: "POST", body: {} }))}>Re-assess</Button>
             <Button variant="primary" busy={busy === "approve"} disabled={!note.trim()} onClick={() => decide(true)}>Approve</Button>
             <Button variant="danger" busy={busy === "reject"} disabled={!note.trim()} onClick={() => decide(false)}>Reject</Button>
-            {d.status === "APPROVED" && <Button variant="primary" busy={busy === "start"} onClick={start}>Start production</Button>}
+            {d.status === "APPROVED" && <Button variant="primary" busy={busy === "start-ai"} onClick={startWithAi}>Start with the AI company</Button>}
+            {d.status === "APPROVED" && <Button busy={busy === "start"} onClick={start} title="Creates the video only; you run each step yourself">Start by hand</Button>}
           </div>
+          {d.status === "APPROVED" && <p className="text-xs text-muted">“Start with the AI company” has the AI write the brief and the lyrics or script, managers check each step, and the video is built and checked. It stops at every decision that is yours: rights concerns, medical review and publication approval. It uses your Claude plan (see the AI Brain page).</p>}
           <p className="text-xs text-muted">Approval re-runs the assessment first, so it rests on what is true now. An idea that needs a capability that does not exist yet is parked instead of approved.</p>
         </section>
       )}

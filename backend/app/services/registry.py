@@ -1,5 +1,6 @@
 """Importing this module registers every approval handler and task handler exactly once."""
 
+from app.ai import drafting as ai_drafting  # noqa: F401  (side effect: the AI drafting task handlers)
 from app.analytics import handlers as analytics_handlers  # noqa: F401  (side effect: collection and reply task handlers)
 from app.community import replies as community_replies  # noqa: F401  (side effect: the reply approval handler)
 from app.improvement import handlers as improvement_handlers  # noqa: F401  (side effect: the lesson-mining task handler)

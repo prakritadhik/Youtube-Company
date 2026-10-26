@@ -38,6 +38,8 @@ DEFAULTS: dict[str, Any] = {
         "max_publishes_per_day_per_channel": 0,
         "default_privacy": "private",  # what an autonomous upload asks for; the owner decides when to trust "public"
     },
+    # The AI brain (Claude Code on this computer). Empty model/effort mean the program's own defaults.
+    "ai": {"model": "", "effort": "", "timeout_seconds": 300},
     # The time zone schedules are read in ("08:30" means 08:30 here). The owner's own; change it if it is wrong.
     "timezone": "Asia/Kathmandu",
     "emergency_pause": {"active": False, "since": None, "by": None, "reason": None},
@@ -54,7 +56,7 @@ DEFAULTS: dict[str, Any] = {
 }
 
 # Settings that only the human owner may change. (Pausing is separately open to the CEO/system.)
-OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations", "youtube", "timezone"}
+OWNER_ONLY_KEYS = {"operating_mode", "budget", "autonomy", "provider_attestations", "youtube", "timezone", "ai"}
 
 _BUDGET_NUMERIC = {
     "daily_usd", "monthly_usd", "per_video_usd", "daily_model_requests", "daily_provider_requests",
@@ -111,6 +113,27 @@ def _validate(key: str, value: Any) -> Any:
         if isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= 20:
             raise SettingError("max_publishes_per_day_per_channel must be a whole number from 0 to 20")
         return value
+    if key == "ai":
+        import re as _re
+
+        if not isinstance(value, dict) or set(value) - {"model", "effort", "timeout_seconds"}:
+            raise SettingError("ai settings are model, effort and timeout_seconds")
+        out = {}
+        if "model" in value:
+            m = value["model"]
+            if not isinstance(m, str) or (m and not _re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:\-\[\]]{0,79}", m)):
+                raise SettingError("model must be a model name or alias such as sonnet or opus (letters, digits and . _ : - [ ] only), or empty for the default")
+            out["model"] = m
+        if "effort" in value:
+            if value["effort"] not in ("", "low", "medium", "high", "xhigh", "max"):
+                raise SettingError("effort must be empty, low, medium, high, xhigh or max")
+            out["effort"] = value["effort"]
+        if "timeout_seconds" in value:
+            t = value["timeout_seconds"]
+            if isinstance(t, bool) or not isinstance(t, int) or not 30 <= t <= 1800:
+                raise SettingError("timeout_seconds must be a whole number from 30 to 1800")
+            out["timeout_seconds"] = t
+        return out
     if key == "timezone":
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 

@@ -40,6 +40,7 @@ _RECORD_TABLES: dict[str, str] = {
     "experiments": "app.models.improvement.Experiment",
     "reply_drafts": "app.models.community.ReplyDraft",
     "comments": "app.models.community.Comment",
+    "ai_generations": "app.models.ai.AiGeneration",
 }
 
 MACHINE_VERIFIABLE = {EvidenceKind.FILE, EvidenceKind.DB_RECORD, EvidenceKind.API_RESPONSE, EvidenceKind.TEST_RESULT}

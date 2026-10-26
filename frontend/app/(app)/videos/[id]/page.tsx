@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth";
 import { PackagingCards } from "@/components/packaging";
 import { YouTubeVideoCard } from "@/components/youtube";
 import { VideoExperimentNote } from "@/components/learning";
+import { ProgressBanner } from "@/components/ai";
 import { Badge, Card, Empty, ErrorNote, KeyValue, List, Loading, PageHeader, Severity, StatusBadge, Table, Td, Th } from "@/components/ui";
 import { fmtDate, titleCase } from "@/lib/format";
 import type { Tone, VideoDetail } from "@/lib/types";
@@ -34,6 +35,8 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
           <Badge tone={v.gate_for_publishing.allowed ? "ok" : "neutral"}>{v.gate_for_publishing.allowed ? "Cleared to publish" : `${blockers.length} thing${blockers.length === 1 ? "" : "s"} stop publication`}</Badge>
         </>}
       />
+
+      <ProgressBanner progress={v.progress} />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-2">

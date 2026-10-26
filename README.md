@@ -8,9 +8,11 @@ controls and an owner dashboard at <http://localhost:3000>.
 > **Honest status:** Phases 1 (management foundation), 2 (a real, validated local video pipeline), 3 (research,
 > planning and packaging), 4 (YouTube integration), 5 (performance data and comments) and 6 (lessons, experiments and comparisons) are built and tested. YouTube upload, performance collection and comment replies are built but **mock-tested only** (none of it has touched the real YouTube; see
 > [docs/YOUTUBE.md](docs/YOUTUBE.md) and [docs/ANALYTICS.md](docs/ANALYTICS.md)). The scheduler, daily operating cycle, alerts and health checks **are** built (restart-verified on Linux). Nothing here has published to
-> YouTube or calls an AI provider; the soundtrack is an algorithmic **instrumental
+> YouTube. **The AI brain is Claude Code on your own computer** (signed in with your Claude account, no API key): it writes briefs, lyrics/scripts and ideas, and the
+> managers' reviews of those drafts are model-assisted ([docs/AI_BRAIN.md](docs/AI_BRAIN.md)). It is verified against a stand-in program and against the real one on the build
+> machine, **not on Windows**, and it needs you to confirm that your plan allows it. The soundtrack is an algorithmic **instrumental
 > with no vocals**; trend, keyword and audience data are **unavailable** (nothing is estimated); titles and descriptions are
-> plain template drafts, not model-written. Sung songs, AI illustration and AI-written text need providers that are not
+> plain template drafts. Sung songs and AI illustration need providers that are not
 > connected. See [STATUS.md](STATUS.md), [docs/PRODUCTION.md](docs/PRODUCTION.md) and [docs/RESEARCH.md](docs/RESEARCH.md).
 
 ## What works today (Phase 1)
@@ -29,6 +31,7 @@ controls and an owner dashboard at <http://localhost:3000>.
 | Performance and comments | Daily collection of views, watch time, retention and similar figures with their source and time, where an unavailable figure shows YouTube's reason and never zero; public comments sorted by fixed, English-only rules (safety, copyright and medical comments are escalated, never answered); reply drafts that need your approval of the exact text, a thank-you template only for plain praise, an optional automatic thank-you under strict conditions, one reply per comment, success only from a read-back → [ANALYTICS.md](docs/ANALYTICS.md) |
 | Learning | Lessons mined from finished workflows (a QA check that failed and was corrected, an originality finding that was resolved) with evidence the CEO re-checks, driven through the board by you, recorded on every later task of that channel; experiments with seeded random arms, no test before the planned sample, an honest permutation test and your decision; like-for-like video comparisons → [IMPROVEMENT.md](docs/IMPROVEMENT.md) |
 | Operations | A persistent scheduler (catch-up, idempotent slots, your time zone), an hourly health check, a daily operating cycle that only does what is safe and says when nothing happened, alerts that de-duplicate and clear themselves, a worker heartbeat; Operations page + badge → [OPERATIONS.md](docs/OPERATIONS.md) |
+| AI brain | *Content Plan → Start with the AI company*: Claude Code on your computer (no API key, no tools) writes the brief and the lyrics/script, managers review them (bounded), the music/scenes/captions/render/QA/rights steps run, the CEO re-checks the rights evidence, clean metadata is approved, and the video arrives at **READY with a request for your approval**. It stops at every decision that is yours (failed QA, rights concerns, medical review, publication). Every call is recorded with its exact prompt → [AI_BRAIN.md](docs/AI_BRAIN.md) |
 | Dashboard | Executive overview, three channel pages, content plan, organization, intelligence board, approvals, performance, comments, operations, originality & rights, executive reports, learning, settings, diagnostics. Owner sees the verified executive layer by default; raw detail is a separate, audited, owner-only layer |
 
 ## Requirements
@@ -107,9 +110,10 @@ commercial rights — [PROVIDERS.md](docs/PROVIDERS.md) lists what must be verif
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Foundation (this release) | **built, tested** |
-| 2 | Real video production: briefs, scripts, assets/provenance, FFmpeg, captions, thumbnails, originality review | **built, tested** (local assets; sung music/AI art/LLM drafting need providers) |
-| 3 | Research, SEO, content planning | **built, tested** (no data source or language model connected; trends and keywords unavailable) |
+| 2 | Real video production: briefs, scripts, assets/provenance, FFmpeg, captions, thumbnails, originality review | **built, tested** (local assets; sung music and AI art need providers; drafting by the AI brain) |
+| 3 | Research, SEO, content planning | **built, tested** (no data source connected; trends and keywords unavailable; the AI brain proposes ideas but cannot look anything up) |
 | 4 | YouTube OAuth, upload, scheduling, quota | **built, mock-tested only**; needs your Google Cloud OAuth client and a first real run ([YOUTUBE.md](docs/YOUTUBE.md)) |
 | 5 | Analytics, comments, reply drafting | **built, mock-tested only**; needs the same Google setup as Phase 4 plus the analytics and comments permissions ([ANALYTICS.md](docs/ANALYTICS.md)) |
-| 6 | Reporting chain, lessons, experiments, comparisons | **built, tested** (no real experiment has run: needs real published videos; no language model writes narrative) → [IMPROVEMENT.md](docs/IMPROVEMENT.md) |
+| 6 | Reporting chain, lessons, experiments, comparisons | **built, tested** (no real experiment has run: needs real published videos; the AI brain does not write reports or lessons) → [IMPROVEMENT.md](docs/IMPROVEMENT.md) |
 | 7 | Scheduler, daily cycle, health, alerts | **built, tested**; restart-verified with real processes on Linux (`scripts/verify_restart.py`); Windows untested |
+| 8 | The AI brain: Claude Code on your computer drafts and reviews; the conductor carries a video to your approval | **built, tested** against a stand-in program and, opt-in, the real one; needs your plan-terms confirmation and a daily allowance; Windows untested → [AI_BRAIN.md](docs/AI_BRAIN.md) |

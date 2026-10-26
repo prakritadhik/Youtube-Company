@@ -1,27 +1,39 @@
 # Project status
 
-_Last updated: 2026-10-25 · Branch `claude/sweet-hamilton-hvxkym`_
+_Last updated: 2026-10-26 · Branch `claude/sweet-hamilton-hvxkym`_
 
 ## Summary
 
 **Phases 1 (Foundation), 2 (local video production), 3 (research, planning and packaging), 4 (YouTube integration, mock-tested
-only), 5 (performance data and comments, mock-tested only), 6 (lessons, experiments and comparisons) and 7 (scheduler, daily cycle, alerts, health)** are built and tested.
-All seven phases now exist; none of the YouTube-dependent ones has touched the real YouTube, and no real experiment has run. The system can assemble, check and rights-screen a real video from local assets, plan content
-per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts. It does **not** yet call
-any AI provider, and it has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
-anything, and it is not autonomous. The soundtrack is an instrumental with
-**no vocals**; a sung birthday song needs a music provider that is not connected. Search, trend, keyword and audience data
-are **unavailable** (nothing is estimated), and titles and descriptions are plain template drafts, not model-written.
+only), 5 (performance data and comments, mock-tested only), 6 (lessons, experiments and comparisons), 7 (scheduler, daily cycle, alerts, health) and 8 (the AI brain)** are built and tested.
+None of the YouTube-dependent phases has touched the real YouTube, and no real experiment has run. The system can assemble, check and rights-screen a real video from local assets, plan content
+per channel, keep a source register, and draft, check and approve metadata and thumbnail concepts.
+
+**New in Phase 8, and the answer to "can the AI use my computer?":** yes. The roles that write and the managers who review them now do their thinking by running
+**Claude Code on your computer under your own Claude account** (no API key; no tools; its output is only text that the company then checks). *Content Plan → Start with the AI company*
+takes an approved idea to a finished video **awaiting your approval**: the AI writes the brief and the lyrics/script, managers review (bounded), the production chain runs, the CEO re-checks the rights
+evidence, clean metadata is approved and the video is moved to READY with a request for your approval. It stops at every decision that is yours. Ran end to end against the **real** Claude Code on the
+build machine (6 model calls, one correction round, one video READY); not run on Windows; you must confirm your plan's terms and set a daily allowance first ([docs/AI_BRAIN.md](docs/AI_BRAIN.md)).
+
+**A gap this phase found and closed (disclosed because earlier phases were verified through the demo and unit tests, not the live app):** in the running dashboard "Start production" created only a
+video, nothing reviewed submitted tasks, and the steps that record QA, rights and CEO verdicts, approve metadata and ask for approval existed only inside the demonstration command. A video could not actually be
+produced from the dashboard. The conductor now performs those steps for videos started with the AI company; *Start by hand* still creates only the video.
+
+It has **never connected to the real YouTube** (that needs your Google Cloud OAuth client; see docs/YOUTUBE.md) or published
+anything. The soundtrack is an instrumental with
+**no vocals** and there is no narration voice unless a provider is connected; a sung birthday song needs a music provider that is not connected. Search, trend, keyword and audience data
+are **unavailable** (nothing is estimated), and titles and descriptions are plain template drafts.
 
 | Phase | State | Notes |
 |---|---|---|
 | 1 Foundation | ✅ built and tested | Acceptance criteria met on Linux; see evidence below. Windows scripts untested. |
-| 2 Real video production | ✅ built and tested (local assets) | One validated demo video produced; sung music, AI art and LLM drafting need providers (see "Needs you") |
-| 3 Research and SEO | ✅ built and tested (no data source / language model) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
+| 2 Real video production | ✅ built and tested (local assets) | One validated demo video produced; sung music and AI art need providers; drafting is done by the AI brain (Phase 8) |
+| 3 Research and SEO | ✅ built and tested (no data source) | Planning, source register, safe fetcher, metadata and thumbnail checks, approval gate; trend/keyword data unavailable |
 | 4 YouTube integration | 🟨 built, **mock-tested only** | Sign-in, identity confirmation, resumable upload, thumbnail, scheduling, read-back verification, quota ledger; needs your OAuth client and a first real run (docs/YOUTUBE.md) |
 | 5 Analytics and community | 🟨 built, **mock-tested only** | Daily collection of totals, daily figures and retention with source and time; unavailable figures carry YouTube's reason, never zero; comment retrieval with fixed English-only rules (`rules-v1`); template thank-yous for plain praise only; owner-approved replies, read back; Performance and Comments pages. Needs the Phase 4 Google setup plus the analytics and comments permissions (docs/ANALYTICS.md) |
 | 6 Management and improvement | ✅ built and tested (no real data yet) | Lessons mined from finished workflows and driven through the board by you; lessons recorded on later tasks; experiments (seeded random arms, no test before the planned sample, permutation test, your decision); video comparisons; a real learning phase in the daily cycle. No real experiment has run; no language-model narrative (docs/IMPROVEMENT.md) |
 | 7 Controlled autonomy | ✅ built and tested (restart-verified on Linux) | Persistent scheduler with catch-up, daily operating cycle, alerts, worker heartbeat, health checks, gated autonomous upload queueing; no e-mail/phone alerts; Windows run untested |
+| 8 The AI brain | ✅ built and tested (stand-in program + one real end-to-end run; not on Windows) | Claude Code on your computer drafts briefs, lyrics/scripts and ideas and assists manager review; a conductor carries a video to your approval and stops at your decisions; every call recorded with its prompt; daily allowance, plan-terms confirmation, connection test; AI Brain page (docs/AI_BRAIN.md) |
 
 ## Phase 1 acceptance criteria
 
@@ -80,6 +92,27 @@ Verified with real processes by `python scripts/verify_restart.py` (a throwaway 
 Unit and API tests: scheduler arithmetic in the owner's time zone (including a daylight-saving change), idempotent slots, two workers,
 catch-up and skip policies, restart in-process, alert de-duplication and escalation, every health check, the daily cycle's phases and
 its autonomy limits (never an unlisted channel, never medicine, daily limit, any gate failure), pause stops the cycle.
+
+## Phase 8 acceptance criteria (the AI brain)
+
+> The company's writing and its managers' reviews are done by Claude Code on the owner's computer, with no API key; a video started with the AI company reaches the owner's approval without anyone
+> running a step by hand; and nothing the model says can approve, publish, pay or change a setting.
+
+| Criterion | Evidence |
+|---|---|
+| Uses the owner's computer and account, not a key | The program is run with `-p`, no tools, an empty folder, the prompt on standard input, and `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` / cloud switches removed from its environment (`test_claude_code.py`, 19). Against the real program: connection test and a real call pass (`test_claude_code_live.py`) |
+| Cannot act, only write | Tool-free by construction and by a self-test that fails if it reports a tool; output is parsed, schema-checked, then subjected to the same rules as a person's work; no code path lets it change a permission, gate, budget or setting |
+| Refuses to run until you allow it | Readiness: program present, **your plan-terms confirmation**, no emergency pause, a **daily allowance above 0** (default 0), allowance not used up; a role without the model tool is refused (`test_ai_gateway.py`, 25) |
+| A video reaches your approval by itself | `test_ai_flow.py` / `test_ai_conductor.py`: idea → AI brief → manager review → AI lyrics → manager review → music → scenes → captions → render → thumbnail → QA → rights → CEO re-check → metadata → READY → publication request, through the real queue and FFmpeg; every task of the chain COMPLETED by a manager |
+| Stops where a person must decide | Tested stops: failed QA (corrections opened), rights verdict not PASS, CEO re-check disagrees, medicine → **human medical review first** (never READY before it), publication approval asked once and never granted or re-asked after a "no"; a draft returned twice, an unusable review, an unavailable brain (parked with the reason, resumed by itself, no attempt used up) |
+| Everything recorded | `ai_generations` row + file with the exact prompt and answer (secrets redacted) per call; a usage record per call (category model, "included in subscription"); the lessons in force are put into the prompt and recorded on the task |
+| Against the real model | `tests/test_ai_live.py` (opt-in): the real Claude Code wrote a brief (approved by its review), wrote lyrics (one correction round for line length, reviewed OK) and the company built, checked and rights-cleared the video to READY with the publication request pending: **6 model calls**. An earlier run found two real defects, both fixed and tested: the reviewer demanded a sung vocal that cannot be produced and nit-picked new points each round (it escalated to the owner, as designed), and the review notes limit was too small |
+| API and dashboard | `test_api_ai.py` (8); the AI Brain page (readiness checklist, connection test, model/effort, activity with the exact prompt), "Start with the AI company" on approved ideas, "What happens next" on the video page |
+
+**Not verified:** Windows; the real not-signed-in and usage-limit messages; how long your plan lasts under daily use; the quality of what a real model writes over many videos (one run, judged by eye).
+The managers' review of a draft is a second reading by the same kind of model, not independent assurance.
+
+**Mutation checks** (each safety rule broken on purpose, a test must fail): 33 mutants over the gateway, review, conductor, drafting and prompts. First pass: 26 killed, 7 survived. Five were weak tests (assertions that were true whatever the code did, for example checking the writer's own prompt for a phrase that prompt always contains) and two were unreachable-in-practice guards. The five tests were rewritten and re-run: **32 of 33 killed**. The survivor is the "ask for publication approval only once" guard, which is redundant with the video's own `owner_approval_status` check (an equivalent mutant); it is kept as defence in depth.
 
 ## Phase 5 acceptance criteria
 
@@ -142,13 +175,16 @@ What *was* verified, against a mock that follows Google's documented protocol (i
 
 | Check | Result |
 |---|---|
-| Backend unit + API tests (`python -m pytest`) | **758 passed** (about 2 min with `-n 4`) |
+| Backend unit + API tests (`python -m pytest`) | **854 passed, 3 skipped** (the skipped are the opt-in live tests that use your Claude account; about 2 min with `-n 4`) |
 | Lint (`ruff check app tests migrations`) | clean |
 | Migration drift (`alembic check`) and up/down/up | clean |
-| Frontend typecheck (`tsc --noEmit`) and production build | pass (17 routes, including `/performance`, `/comments` and `/learning`) |
-| Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 16 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
+| Frontend typecheck (`tsc --noEmit`) and production build | pass (18 routes, including `/performance`, `/comments`, `/learning` and `/ai`) |
+| Browser smoke test (`frontend/e2e/smoke.cjs`, Chromium, fresh install) | **passed**: first-run setup, all 17 pages, report generation, pause banner < 3 s, resume, audit verify, mobile no-overflow, sign-out guard |
 | Live concurrency stress (API + worker + 3rd process) | 150 concurrent writes, 60 tasks, 80 reads: 0 errors, audit chain intact over 352 events |
 | Video page in a real browser (demo data) | player, lyrics, rights report, 19 QA rows, provenance table render; no horizontal overflow, no console errors |
+| Real processes, AI company (`python scripts/verify_ai_stack.py`: real API + worker + FFmpeg, a stand-in `claude`, driven only through the API) | **9 of 9 checks passed**: not ready until you confirm and set an allowance; connection test; start with the AI company; the worker's own housekeeping reviews and conducts; READY with the publication request pending; 4 recorded calls; every task COMPLETED by a manager |
+| Restart check (`python scripts/verify_restart.py`) after the housekeeping change | passed (8 of 8) |
+| Migration `0008` | `alembic check` clean; down/up/down cycle clean |
 | Clean-clone install via `scripts/setup.sh` | see "Install verification" below (verified at the end of Phase 1; not repeated for Phase 2) |
 
 Where the tests live: `backend/tests/` — `test_org_security`, `test_audit_settings`, `test_tasks`, `test_board`,
@@ -228,12 +264,12 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
   (docs/ANALYTICS.md). No post-upload metadata edits, playlists or deletes (other than the self-test's own video).
 * **No other provider has been run live either.** The ElevenLabs text-to-speech client exists but was written from public API
   knowledge and tested against a mock transport only (`verified_live` stays false). There is **no** adapter for ElevenLabs
-  music (request format not verified), a language model, image/video generation, Canva or YouTube. `docs/PROVIDERS.md`
+  music (request format not verified), image/video generation, Canva or YouTube. (The language model is Claude Code on your computer: Phase 8.) `docs/PROVIDERS.md`
   grades every provider fact as Observed / Reported / Unknown.
 * **No vocals.** The generated soundtrack is an algorithmic instrumental. A plan that says "sung" is flagged
   `VOCALS_MISSING` and cannot pass review.
-* **Creative steps are manual.** Briefs and lyrics/scripts are written by a person (or recorded as such) until a
-  language model is connected. The demo lyrics are sample text and are labelled DEMO.
+* **Creative steps are manual unless you start a video with the AI company.** Then the AI brain drafts them (always a draft until a manager reviews it); *Start by hand* keeps them manual.
+  The demo lyrics are sample text and are labelled DEMO. What a real model writes is only judged by eye so far (one run).
 * **Audio fingerprinting is unavailable**, so external-provider audio always goes to human review. Text similarity does
   not detect synonym-level paraphrase, and nothing searches external lyric, music or footage databases.
 * Scenes and thumbnails are procedural placeholders, not illustration.
@@ -249,11 +285,11 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
   but only exercised on Linux.
 * **Alerts are in the dashboard and CLI only.** No e-mail, SMS or phone notification is configured. A stopped worker is noticed by the dashboard (banner within two minutes) and not by anything outside it.
 * The scheduler runs inside the worker, so it only works while the launcher is running; there is no Windows service or Task Scheduler entry yet.
-* The reporting chain is deterministic. No language model writes narrative yet. Agent "intelligence" is not
-  implemented: roles define permissions and duties; LLM-backed behaviour arrives with the provider adapters.
+* The reporting chain is deterministic. The AI brain does not write reports, lessons or experiment plans. Only the creative director, the script and lyrics writer, the content strategist
+  and the managers' draft reviews use it; every other role still defines permissions and duties only.
 * **No real experiment has run.** The first needs a connected channel and at least ten public videos (five per arm). If YouTube omits zero-view days from its daily report, small
   channels' windows will stay "incomplete" until the first real collection shows what it returns (docs/IMPROVEMENT.md). Lessons are mined only from QA and originality history;
-  nothing proposes, words or judges lessons with a language model, and the software never changes its own thresholds because of a lesson.
+  nothing proposes, words or judges lessons with the AI brain, and the software never changes its own thresholds because of a lesson.
 * **Revenue is never collected** (shown as unavailable). Demographics, traffic sources and competitor figures are not collected. Comment sorting is fixed rules,
   English only and blunt; there is no language-model sentiment or reply wording, and a comment edited or deleted on YouTube after collection is not tracked.
   No moderation action (hide, report, ban) exists; a reply is the only write.
@@ -267,8 +303,9 @@ and a badge on every page; `ops-status`; `scripts/verify_restart.py`. Details: [
    (for example an export from a tool you pay for) or the willingness to record observations by hand on ideas.
 3. **Provider decisions** (each needs a key, your confirmation of the plan's terms in Settings → Providers, and your
    approval of one small test generation before the app will spend anything):
-   * a language-model API for drafting briefs, lyrics and scripts (a Claude Pro chat subscription is not assumed to
-     cover API use);
+   * **the AI brain (Claude Code on this computer, no key):** install Claude Code and sign in; Settings → Providers → confirm that your plan allows it; Settings → limits: set *Language-model requests per day* and
+     *Provider requests per day* above 0 (a video needs about 4 to 8); AI Brain → Run the connection test; then Content Plan → Start with the AI company. Tell me what the first run does on **Windows** and what the
+     real sign-in or usage-limit messages say;
    * ElevenLabs: an API key and a check that your plan's terms allow commercial use via the API. Music is the route to a
      *sung* song; text-to-speech is for narration only;
    * an image source (provider, licensed stock, or your own artwork) to replace the procedural placeholders.

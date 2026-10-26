@@ -42,7 +42,7 @@ REQUIREMENTS: dict[str, tuple[str, str, str]] = {
     "narration": ("elevenlabs", "speech.tts", "a narrated voice"),
     "illustrated_scenes": ("local-procedural", "scene.image", "illustrated scenes"),
     "ai_images": ("elevenlabs", "image.generate", "AI-generated images"),
-    "llm_drafting": ("anthropic", "llm.reasoning", "model-drafted writing"),
+    "llm_drafting": ("claude-code", "llm.generate", "AI drafting by Claude Code on this computer"),
     "video_render": ("local-render", "video.render", "video assembly"),
 }
 OPEN_STATUSES = ("PROPOSED", "ASSESSED", "APPROVED", "PARKED")

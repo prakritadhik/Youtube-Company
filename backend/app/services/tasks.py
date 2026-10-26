@@ -538,6 +538,18 @@ def review(db: Session, actor: Actor, task_id: int, *, approve: bool, notes: str
     return task
 
 
+def escalate(db: Session, actor: Actor, task_id: int, reason: str) -> Task:
+    """A reviewer who cannot decide hands a submitted task to a person: it is parked as BLOCKED with the reason, not guessed at."""
+    actor.require(P.TASK_REVIEW)
+    task = _get(db, task_id)
+    if task.status != TS.SUBMITTED.value:
+        raise InvalidTransition(f"task {task.id} is {task.status}, not SUBMITTED")
+    task.blocked_reason = reason[:1000]
+    _set_status(db, task, TS.BLOCKED)
+    audit.record(db, actor, "task.escalated", "task", task.id, {"reason": reason[:500]})
+    return task
+
+
 def _promote_dependents(db: Session, task: Task) -> None:
     for dep_id in dependents_of(db, task.id):
         dep = db.get(Task, dep_id)

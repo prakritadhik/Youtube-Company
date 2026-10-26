@@ -12,7 +12,7 @@ What exists, how it decides, and what it cannot know.
 | Source tracking | **Automated + manual** | Fetched pages keep a hashed snapshot; manual notes record URL, date and the claim supported |
 | Web fetching | **Built, mock-tested** | SSRF-safe, robots-aware. Not run against the live internet from the build environment (its network policy blocks most hosts), so treat the first real fetch as the live test |
 | Trend / keyword / competitor / audience *data* | **Unavailable** | No search, trends or analytics source is connected. Only observations someone records with a source and date exist |
-| Metadata drafting | **Template (`template-v1`)** | From the approved brief, script and sources. A language model is not connected |
+| Metadata drafting | **Template (`template-v1`)** | From the approved brief, script and sources. The AI brain does not write metadata yet |
 | Metadata checking | **Automated, deterministic** | Rules below |
 | Chapters | **Automated, measured only** | From section starts of the generated audio; never from estimated timing |
 | Thumbnail concepts | **Manual + automated checks** | Contrast is measured; the image itself is produced in Phase 2 |
@@ -78,6 +78,6 @@ company does not have is covered by the standard "unavailable: YouTube is not co
 ## What it cannot do yet
 
 * Find trends, keywords or competitor data by itself (no data source is connected).
-* Write ideas, titles or descriptions in a human voice (no language model is connected). The templates are plain.
+* Write titles or descriptions in a human voice (the templates are plain). The AI brain can propose *ideas* (AI Brain → Ask for ideas) but does not research: it cannot look anything up.
 * Test which title or thumbnail works better (needs analytics).
 * Check meaning: all similarity and accuracy checks are word-based screening aids.

@@ -43,6 +43,15 @@ Also verified on the live stack (not in the unit suite): 150 concurrent API writ
 * **A compromised browser or machine.** Malware that can read your session cookie can act as you.
 * **Provider-side risk** (leaked keys at the provider, account bans, policy changes).
 
+## The AI brain (built; see [AI_BRAIN.md](AI_BRAIN.md))
+
+* Claude Code is started with **no tools**, in an empty folder outside the project, with the prompt on standard input and the API-key/cloud switches removed from its
+  environment. It can only return text. The connection test fails if it reports a tool.
+* Its text is parsed, schema-checked and then put through the same deterministic rules as a person's work. It is never executed, and it reaches no code path that can
+  change permissions, budgets, gates or settings. A successful prompt injection could at worst make a draft worse; the originality, QA, CEO re-check and your own decisions still apply.
+* Source excerpts and other outside text are quoted as untrusted data in the prompt. Every call is recorded with its exact prompt (secrets redacted) and answer.
+* The model has no way to approve anything: rights, medical review and publication approval are requests to the owner, and the company never grants them.
+
 ## Planned for later phases
 
 * **Prompt-injection posture for the LLM phases** (the data-handling half exists now, see the research and comment rows above): web pages, scripts, comments, uploaded files and model output

@@ -111,7 +111,7 @@ def _mgr(dept: str, name: str, resp: str) -> RoleSpec:
             "Tasks are accepted only after evidence is verified against the artifact or record",
             "Blockers, risks and required decisions are reported, not hidden",
         ),
-        tools=("board.read", "db.read", "report.write", "task.manage"),
+        tools=("board.read", "db.read", "report.write", "task.manage", "llm.generate"),
         ai=True,
         extra_permissions=(P.REPORT_SUBMIT,),
         limits={"max_concurrent_tasks": 3, "max_model_calls_per_task": 6},

@@ -63,6 +63,8 @@ def video_detail(db: Session, video_id: int) -> dict[str, Any] | None:
         return None
     ch = db.get(Channel, v.channel_id)
     all_tasks = db.scalars(select(Task).where(Task.video_id == video_id).order_by(Task.id)).all()
+    from app.ai import conductor  # local import: the AI package depends on the production package
+
     return {
         **videos.serialize(db, v),
         "channel_name": ch.name if ch else None, "channel_policy": ch.policy if ch else {},
@@ -72,7 +74,7 @@ def video_detail(db: Session, video_id: int) -> dict[str, Any] | None:
         "sources": [{"id": s.id, "url": s.url, "title": s.title, "publisher": s.publisher, "retrieved_at": iso(s.retrieved_at),
                      "supports": s.supports} for s in db.scalars(select(SourceRecord).where(SourceRecord.video_id == video_id))],
         "assets": [_asset_row(a) for a in assets_svc.for_video(db, video_id)],
-        "rights": _rights(db, video_id), "qa": _qa(db, video_id),
+        "rights": _rights(db, video_id), "qa": _qa(db, video_id), "progress": conductor.progress(db, v),
         "gate_for_publishing": gate.evaluate(db, v, purpose="publish").as_dict(),
         "tasks": [tasks.summary(db, t) for t in all_tasks],
         "honesty": ("The soundtrack is an algorithmic instrumental with no vocals. " if any(a.kind == "music" and a.provider == "local-procedural" for a in assets_svc.for_video(db, video_id)) else "")

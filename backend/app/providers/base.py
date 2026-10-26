@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.providers import claude_code
 from app.services import control, finance
 from app.services import settings as settings_svc
 
@@ -74,10 +75,17 @@ REGISTRY: dict[str, Provider] = {
          Capability("sfx", "Sound effects", False, paid=True, note="adapter not written")),
         docs="docs/PROVIDERS.md",
     ),
+    "claude-code": Provider(
+        "claude-code", "Claude Code on this computer", False, None, True, None,
+        (Capability("llm.generate", "Agent drafting and review (briefs, lyrics, scripts, ideas, manager reviews), by running the Claude Code program on this computer "
+                    "with your own signed-in Claude account; no API key, no tools", True,
+                    note="needs `claude` installed and signed in; each call uses your plan's usage; tested against a stand-in program and, in one opt-in test, the real one"),),
+        docs="docs/AI_BRAIN.md", extra={"locator": claude_code.locate},
+    ),
     "anthropic": Provider(
         "anthropic", "Anthropic Claude API", True, "anthropic_api_key", True, None,
-        (Capability("llm.reasoning", "Agent reasoning, writing and analysis", False, paid=True,
-                    note="not built yet; a Claude Pro subscription does not include API usage"),),
+        (Capability("llm.reasoning", "Agent reasoning, writing and analysis through the paid API", False, paid=True,
+                    note="not built: Claude Code on this computer is the brain instead; a Claude subscription does not include API usage"),),
     ),
     "youtube": Provider(
         "youtube", "YouTube Data/Analytics API", True, "google_oauth_client_secret", True, None,
@@ -118,11 +126,16 @@ def capability_state(db: Session, provider_id: str, capability_id: str) -> tuple
         return "not_implemented", cap.note or "no adapter has been written for this capability"
     if p.needs_tool and shutil.which(p.needs_tool) is None:
         return "missing_tool", f"{p.needs_tool} is not installed"
+    locator = p.extra.get("locator")
+    if locator is not None and locator() is None:
+        return "missing_tool", "the `claude` program was not found: install Claude Code and sign in, or set YTC_CLAUDE_CODE_BIN in .env"
     if p.needs_key and not _key_present(p):
         return "not_configured", f"no API key is configured ({p.key_setting})"
     if p.needs_attestation:
         att = settings_svc.get(db, "provider_attestations").get(provider_id)
         if not att or not att.get("api_access_confirmed") or (cap.paid and not att.get("commercial_use_confirmed")):
+            if not p.needs_key:
+                return "needs_attestation", "the owner has not yet confirmed in Settings (Providers) that their own plan allows this use"
             return "needs_attestation", "the owner has not confirmed API access and commercial-use terms for this provider in Settings"
     if settings_svc.is_emergency_paused(db):
         return "paused", "emergency pause is active"

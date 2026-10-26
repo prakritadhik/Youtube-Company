@@ -1,3 +1,4 @@
+from app.models.ai import AiGeneration
 from app.models.approvals import ApprovalRequest
 from app.models.audit import AuditEvent
 from app.models.auth import LoginAttempt, User, UserSession
@@ -16,7 +17,7 @@ from app.models.videos import Video
 from app.models.youtube import QuotaEntry, YouTubeAuthState, YouTubeConnection, YouTubeUpload
 
 __all__ = [
-    "Agent", "Alert", "ApprovalRequest", "Asset", "AuditEvent", "BoardAcknowledgement", "BoardEntry",
+    "Agent", "AiGeneration", "Alert", "ApprovalRequest", "Asset", "AuditEvent", "BoardAcknowledgement", "BoardEntry",
     "BoardEntryVersion", "BoardRelease", "Channel", "Comment", "ContentIdea", "CreativeBrief", "Department", "Evidence", "Experiment", "ExperimentVideo", "LoginAttempt", "Metric", "MetricGap", "MetadataSet", "OriginalityReview", "QAReport", "QuotaEntry",
     "Report", "ReplyDraft", "ResearchNote", "RetentionPoint", "Schedule", "ScriptVersion", "SettingRow", "SourceRecord", "Task", "ThumbnailConcept", "TaskDependency", "UsageRecord", "User", "UserSession", "Video", "WorkerHeartbeat", "WorkflowLesson", "YouTubeAuthState", "YouTubeConnection", "YouTubeUpload",
 ]

@@ -72,8 +72,10 @@ def _advance_to(db: Session, actor: Actor, video: Video, target: VideoStage) -> 
 
 
 def start_production(db: Session, manager: Actor, video_id: int, *, title: str, description: str, tags: list[str] | None = None,
-                     spec: dict[str, Any] | None = None) -> dict[str, Task]:
-    """Create the task chain. The creative steps (brief, lyrics/script) are manual until an LLM provider exists."""
+                     spec: dict[str, Any] | None = None, drafting: str = "manual") -> dict[str, Task]:
+    """Create the task chain. The creative steps (brief, lyrics/script) are manual, or drafted by the AI brain (``drafting="ai"``)."""
+    if drafting not in ("manual", "ai"):
+        raise ValueError("drafting must be 'manual' or 'ai'")
     video = db.get(Video, video_id)
     if video is None:
         raise ValueError("video not found")
@@ -92,8 +94,10 @@ def start_production(db: Session, manager: Actor, video_id: int, *, title: str, 
     if (ch.policy or {}).get("source_citations_required"):  # type: ignore[union-attr]
         # source-based channels cannot brief or script before their sources are recorded and verified
         t["research"] = mk("research", "Collect and record the sources", "research-specialist", "manual.research")
-    t["brief"] = mk("brief", "Write the creative brief", "creative-director", "manual.brief", (t["research"],) if "research" in t else ())
-    t["script"] = mk("script", "Write the lyrics/script", "script-lyrics-writer", "manual.script", (t["brief"],))
+    prefix = "ai" if drafting == "ai" else "manual"
+    t["brief"] = mk("brief", "Write the creative brief", "creative-director", f"{prefix}.draft_brief" if drafting == "ai" else "manual.brief",
+                    (t["research"],) if "research" in t else ())
+    t["script"] = mk("script", "Write the lyrics/script", "script-lyrics-writer", f"{prefix}.draft_script" if drafting == "ai" else "manual.script", (t["brief"],))
     t["music"] = mk("music", "Compose the soundtrack", "original-music-specialist", "production.generate_music", (t["brief"],))
     t["scenes"] = mk("scenes", "Create the scenes", "image-generation-specialist", "production.generate_scenes", (t["music"],))
     t["captions"] = mk("captions", "Build the captions", "subtitle-caption-specialist", "production.generate_captions", (t["script"], t["music"]))
@@ -102,7 +106,7 @@ def start_production(db: Session, manager: Actor, video_id: int, *, title: str, 
     t["qa"] = mk("qa", "Quality assurance", "final-qa-specialist", "production.qa_video", (t["render"], t["thumbnail"]))
     t["originality"] = mk("originality", "Originality and rights review", "copyright-originality-reviewer", "production.originality_review",
                           (t["render"], t["thumbnail"], t["script"]))
-    audit.record(db, manager, "production.started", "video", video_id, {"tasks": {k: v.id for k, v in t.items()}})
+    audit.record(db, manager, "production.started", "video", video_id, {"tasks": {k: v.id for k, v in t.items()}, "drafting": drafting})
     return t
 
 

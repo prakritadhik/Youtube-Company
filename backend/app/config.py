@@ -57,9 +57,16 @@ class Settings(BaseSettings):
     # --- provider credentials (placeholders only in .env.example; used from later phases) ------
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     elevenlabs_api_key: SecretStr | None = Field(default=None, validation_alias="ELEVENLABS_API_KEY")
+    # Path to the Claude Code program when it is not on the PATH (the company's brain; it uses the owner's signed-in Claude account, no API key).
+    claude_code_bin: str | None = None
     # YouTube OAuth client ("Desktop app" in the Google Cloud console). Created by the owner; never committed.
     google_oauth_client_id: str | None = Field(default=None, validation_alias="GOOGLE_OAUTH_CLIENT_ID")
     google_oauth_client_secret: SecretStr | None = Field(default=None, validation_alias="GOOGLE_OAUTH_CLIENT_SECRET")
+
+    @field_validator("claude_code_bin", mode="before")
+    @classmethod
+    def _blank_path_means_unset(cls, v: object) -> object:
+        return None if v is None or (isinstance(v, str) and not v.strip()) else v
 
     @field_validator("anthropic_api_key", "elevenlabs_api_key", "google_oauth_client_id", "google_oauth_client_secret", mode="before")
     @classmethod

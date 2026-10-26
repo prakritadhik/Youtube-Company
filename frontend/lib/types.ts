@@ -94,7 +94,10 @@ export interface AssetRow {
   license_type: string; license_ref: string | null; commercial_use: string; attribution: string | null;
   simulated: boolean; size_bytes: number; problems: { code: string; message: string }[];
 }
+export interface VideoProgress { conducted: boolean; step?: string; who?: "company" | "you" | "nobody"; detail?: string }
+
 export interface VideoDetail extends VideoItem {
+  progress?: VideoProgress;
   channel_name: string | null; channel_policy: Record<string, boolean>; has_video_file: boolean; has_thumbnail: boolean;
   description: string | null; tags: string[]; honesty: string;
   brief: null | { version: number; status: string; created_by: string; reviewed_by: string | null; review_notes: string | null;

@@ -111,7 +111,7 @@ Supervises scripting, visuals, audio, editing, QA and the originality reviewer; 
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Research and Growth Manager
@@ -123,7 +123,7 @@ Supervises trend, keyword, audience, competitor and packaging-test work; consoli
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Publishing Manager
@@ -135,7 +135,7 @@ Verifies every publication prerequisite (files, metadata, rights, approvals, quo
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Community Manager
@@ -147,7 +147,7 @@ Supervises comment analysis and reply drafting; enforces draft-only unless the o
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Analytics and Improvement Manager
@@ -159,7 +159,7 @@ Supervises metric collection, retention analysis and experiments; protects again
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Finance and Operations Manager
@@ -171,7 +171,7 @@ Supervises cost and usage tracking, provider limit monitoring and efficiency ana
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Technology and Reporting Manager
@@ -183,7 +183,7 @@ Supervises dashboard, scheduling, database, integrations and security; owns reli
 - **Inputs:** COO objectives; current approved board instructions; worker submissions and evidence
 - **Output:** task breakdown; review decisions with notes; structured department report
 - **Acceptance criteria:** Tasks are accepted only after evidence is verified against the artifact or record; Blockers, risks and required decisions are reported, not hidden
-- **Allowed tools:** `board.read`, `db.read`, `report.write`, `task.manage`
+- **Allowed tools:** `board.read`, `db.read`, `llm.generate`, `report.write`, `task.manage`
 - **Extra permissions:** `report:submit`
 
 ### Content Strategy Specialist

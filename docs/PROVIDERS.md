@@ -36,8 +36,21 @@ on the existing subscription, which fits the "minimise additional spending" goal
 | Does Claude Pro include API usage? | **No.** Official Anthropic support articles are titled "Why is Claude API usage billed separately from my paid Claude plan?" and state the Pro plan does not include API usage through the Console, which is billed separately. Monthly API credits exist for **Max** and **Team**, not Pro | Reported (official support-article titles and snippets via search; page not opened) |
 | Rate limits, current model IDs, prices | Unknown — read from the Console when a key exists | Unknown |
 
-Design consequence: LLM-backed agent behaviour needs a billed API key (or the owner chooses another provider). Until
-then roles define permissions and duties only; the pipeline's deterministic parts do not need a model.
+Design consequence: the *API* needs a billed key, so the company does **not** use it. The language model is **Claude Code run on the owner's own
+computer under their own signed-in account** (next section); the Anthropic API provider stays unbuilt and unused.
+
+## Claude Code on this computer (the AI brain)
+
+| Question | Answer | Grade |
+|---|---|---|
+| What is run? | The `claude` program, non-interactively (`-p`, JSON output), with every tool switched off, in an empty folder, prompt on standard input, no session saved | Observed (program help and live calls in the build environment, version 2.1.x) |
+| Whose account/plan pays? | Whatever the program is signed in with. API-key and cloud-provider switches are removed from its environment so they can never take over | Observed (behaviour of the adapter); the billing consequence is the owner's plan's |
+| Does the owner's plan permit unattended use? | **Unknown to this software.** The owner reads their plan's current terms and records the confirmation in Settings; nothing runs before that | Unknown, owner-attested |
+| Cost shown | The program's own list-price estimate per call (`total_cost_usd`). It is not a bill and is stored as *included in subscription* | Observed (field present); its meaning for a plan is the program's |
+| Exact not-signed-in and usage-limit wording | Not reproduced in the build environment; the adapter recognises likely wording and keeps anything else verbatim | Unknown |
+| Windows | Run via `claude.cmd`; arguments are fixed and short and the prompt is on standard input for that reason. Not run on Windows | Unverified |
+
+See [AI_BRAIN.md](AI_BRAIN.md).
 
 ## YouTube Data API v3 / Analytics API
 

@@ -63,8 +63,11 @@ class TaskContext:
     lessons: list[str] = field(default_factory=list)  # board entries in force when this task started (public ids)
 
     def heartbeat(self) -> None:
+        from app.ops import health
+
         with session_scope() as db:
             tasks.heartbeat(db, self.task_id, self.worker_id)
+            health.beat(db, self.worker_id, self.task_id)
 
     def check_paused(self) -> None:
         """Handlers call this between steps so an emergency pause can stop long work safely."""
@@ -149,15 +152,18 @@ class Runner:
 
     def housekeeping(self, *, started: bool = False, now: datetime | None = None) -> list[str]:
         """Beat the heartbeat and let the scheduler create any tasks that are due. Never raises: the loop must keep running."""
+        from app.ai import autopilot
         from app.ops import health, schedule
 
         try:
             with session_scope() as db:
                 health.beat(db, self.worker_id, started=started)
-                return schedule.tick(db, now)
+                due = schedule.tick(db, now)
         except Exception:  # noqa: BLE001 - a failing scheduler must not stop the queue, and the failure is logged
             log.exception("housekeeping failed")
-            return []
+            due = []
+        autopilot.step(self.worker_id)  # never raises; does nothing for work the owner did not start with the AI company
+        return due
 
     def run_forever(self, stop: threading.Event | None = None) -> None:
         stop = stop or threading.Event()

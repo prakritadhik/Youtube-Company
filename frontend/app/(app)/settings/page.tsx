@@ -86,8 +86,10 @@ function ProvidersCard({ onChanged }: { onChanged: () => void }) {
               {p.needs_attestation && p.capabilities.some((c) => c.implemented) && (
                 <form className="mt-4 space-y-3 border-t border-line pt-4" onSubmit={(e) => { e.preventDefault(); save(p.id, { ...current, [p.id]: { api_access_confirmed: f.api, commercial_use_confirmed: f.com, note: f.note } }); }}>
                   <p className="text-sm text-muted">Before this provider can be used, confirm from your own plan and its current terms:</p>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.api} onChange={(e) => setForm({ ...form, [p.id]: { ...f, api: e.target.checked } })} /> My plan includes API access for this</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.api} onChange={(e) => setForm({ ...form, [p.id]: { ...f, api: e.target.checked } })} />
+                    {p.id === "claude-code" ? "My Claude plan allows running Claude Code like this: automated, on my own computer, signed in as me" : "My plan includes API access for this"}</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.com} onChange={(e) => setForm({ ...form, [p.id]: { ...f, com: e.target.checked } })} /> The terms allow commercial use of the generated output</label>
+                  {p.id === "claude-code" && <p className="text-xs text-muted">No API key is involved. Check your plan’s current terms yourself; this software cannot. The connection test and the daily allowance are on the <a className="text-accent hover:underline" href="/ai">AI Brain</a> page.</p>}
                   <input className={inputCls} placeholder="Where you checked (plan name, date, terms page)" value={f.note} onChange={(e) => setForm({ ...form, [p.id]: { ...f, note: e.target.value } })} aria-label="Note" />
                   <div className="flex gap-2">
                     <Button type="submit" variant="primary" busy={busy === p.id}>Save confirmation</Button>
